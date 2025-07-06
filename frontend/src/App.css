@@ -1,0 +1,19 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f8f9fa;
+}
+
+.navbar {
+  background: #2d3e50;
+  color: #fff;
+  padding: 1rem;
+}
+
+.container {
+  max-width: 900px;
+  margin: 2rem auto;
+  background: #fff;
+  border-radius: 8px;
+  padding: 2rem;
+}

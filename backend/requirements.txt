@@ -1,0 +1,15 @@
+Flask
+Flask-SQLAlchemy
+python-dotenv
+pytest
+gunicorn
+flasgger
+flask-cors
+flask-jwt-extended
+uuid
+werkzeug
+cryptography
+schedule
+requests
+flask-migrate
+flask-socketio
