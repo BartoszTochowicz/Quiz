@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from .controllers import fetch_quiz_questions
+from .controller import fetch_quiz_questions
 
 quiz_bp = Blueprint('quiz', __name__)
 

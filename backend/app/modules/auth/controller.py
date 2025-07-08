@@ -1,5 +1,5 @@
 import datetime
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from flask_jwt_extended import create_access_token, create_refresh_token, set_refresh_cookies, unset_refresh_cookies
 import requests
 from flask import jsonify
@@ -56,7 +56,7 @@ class AuthController:
         return jsonify({'message':'User registered successfully!'}), 201
     def add_to_blocklist(self,jti):
         from app.db.db import db
-        now = datetime.now()
+        now = datetime.now(timezone(timedelta(hours=2)))
         db.session.add(TokenBlocklist(jti=jti,created_at = now))
         db.session.commit()
     def logout(self,jti,access):

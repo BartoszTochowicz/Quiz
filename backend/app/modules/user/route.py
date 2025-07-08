@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from .controllers import get_user_info
+from .controller import get_user_info
 
 user_bp = Blueprint('user', __name__)
 
