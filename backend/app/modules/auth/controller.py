@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from flask_jwt_extended import create_access_token, create_refresh_token, set_refresh_cookies, unset_refresh_cookies
 import requests
 from flask import jsonify
-from app import db
+from app.db.db import db
 from app.db.models import User, TokenBlocklist
 class AuthController:
     def login(self,request):
@@ -19,8 +19,8 @@ class AuthController:
             return jsonify({'message':'User not found!'}),404
         if not user.check_password(password):
             return jsonify({'message':'Invalid password!'}),401
-        access_token = create_access_token(identity=user)
-        refresh_token = create_refresh_token(identity=user)
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)
         user_data = {
             'username': user.username,
             'email': user.email,
@@ -42,11 +42,10 @@ class AuthController:
         email = data.get('email')
         password = data.get('password')
 
-        if username is None or email is None or password is None:
+        if not all([username, email, password]):
             return jsonify({'message': 'Missing required fields!'}),400
-        user = User.get_by_username(username)
 
-        if user is not None:
+        if User.get_by_username(username):
             return jsonify({'message':'User already exists!'}),409
         user = User(username=username,email=email)
         user.set_password(password=password)
@@ -67,8 +66,8 @@ class AuthController:
         return response, 200
     def refresh(self,token,user):
         self.add_to_blocklist(token['jti'])
-        access_token = create_access_token(identity=user)
-        refresh_token = create_refresh_token(identity=user)
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)
         response = jsonify(access_token=access_token, message='Token refreshed successfully!')
         set_refresh_cookies(response,refresh_token)
         return response, 200

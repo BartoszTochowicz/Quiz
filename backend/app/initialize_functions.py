@@ -4,15 +4,17 @@ from app.db.models import TokenBlocklist
 from flask import Flask, jsonify
 from app.extensions import cors, jwt, swagger
 
+
 def initialize_db(app: Flask):
     with app.app_context():
         db.init_app(app)
         db.create_all()
 
 def initialize_route(app: Flask):
-    pass
+    from app.modules.auth.route import auth_bp
+    app.register_blueprint(auth_bp,url_prefix='/api/v1/auth')
 
-def initailze_swagger(app:Flask):
+def initialize_swagger(app:Flask):
     with app.app_context():
         swagger.init_app(app=app)
         return swagger
