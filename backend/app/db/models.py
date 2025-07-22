@@ -23,3 +23,17 @@ class TokenBlocklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     jti = db.Column(db.String(36), nullable=False, index=True)
     created_at = db.Column(db.DateTime, nullable=False)
+
+class QuizSinglePlayer(db.Model):
+    __tablename__ = "quiz_singlePlayer"
+    quiz_id = mapped_column(sa.String(255),primary_key=True,unique=True,nullable=False)
+    username = mapped_column(sa.String(255),nullable=False)
+    category = mapped_column(sa.String(255),nullable=False)
+    score = mapped_column(db.Integer,nullable=False)
+    total_questions = mapped_column(db.Integer,nullable=False)
+    timestamp = mapped_column(db.DateTime, nullable=False)
+
+    def increase_score(self,score):
+        self.score += score
+    def add_question_to_total(self,question):
+        self.total_questions += question
