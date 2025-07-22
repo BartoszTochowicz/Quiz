@@ -1,10 +1,13 @@
 from flask import Blueprint, jsonify, make_response
+from flask_jwt_extended import jwt_required
 
 from .controller import SinglePlayerQuizController
 
 singlePlayer_bp = Blueprint("singlePlayer",__name__)
-singlePlayerQuizController = SinglePlayerQuizController
+singlePlayerQuizController = SinglePlayerQuizController()
+
 @singlePlayer_bp.get('/quiz/singleplayer')
+@jwt_required()
 def getQuiz():
     """
     Get single player quiz.
