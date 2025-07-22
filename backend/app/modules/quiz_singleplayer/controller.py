@@ -1,11 +1,10 @@
 import datetime
 import uuid
-from flask_jwt_extended import jwt_required
 import jwt
 import requests
 
 from typing import final 
-from flask import current_app, json
+
 from flask import request
 from app.config.config import BaseConfig
 
