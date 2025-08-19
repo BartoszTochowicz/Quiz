@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.env
+.env.*
+*.sqlite3
+*.db
+instance/
+*.log
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.idea/
+.vscode/
+
+# Flask/Migrations
+migrations/
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
