@@ -1,5 +1,7 @@
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState,useContext } from "react";
+import AuthContext from "../utils/authProvider";
 
 function Login(){
     const [username, setUsername] = useState("");
@@ -76,14 +78,60 @@ function Login(){
     }
     return(
         <div>
-            <h1>Sign In</h1>
-            <form>
-                <label>Username</label>
-                <input/>
-                <label>Password</label>
-                <input/>
-                <button type="submit">Login</button>
+            <h1>
+                {isRegisterMode ? "Register for Quiz App":"Login to Quiz App"}
+            </h1>
+            <form onSubmit={isRegisterMode ? registerUser:loginUser}>
+                <div>
+                    <label>Username</label>
+                    <input
+                        type="text"
+                        id="username"
+                        required
+                        value={username}
+                        onChange={(event) => setUsername(event.target.value)}
+                        className=""
+                        placeholder="Enter your username"
+                    />
+                </div>
+                {isRegisterMode && (
+                    <div>
+                        <label htmlFor="email">Email</label>
+                        <input
+                            type="email"
+                            id="email"
+                            required
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            placeholder="Enter your email"
+                        />
+                    </div>
+                )}
+                <div>
+                    <label htmlFor="passwor">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        required
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="Enter your password"
+                    />
+                </div>
+                <button 
+                    type="submit">
+                    {isRegisterMode ? "Register":"Login"}
+                </button>
             </form>
+            <button 
+                onClick={()=> {
+                    setIsRegisterMode(!isRegisterMode)
+                    setUsername("")
+                    setEmail("")
+                    setPassword("") 
+                }}>
+                {isRegisterMode ? "Switch to Login":"Switch to Register"}
+            </button>
         </div>
     )
 };
