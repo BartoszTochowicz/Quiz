@@ -2,13 +2,13 @@ import { Form } from "react-router-dom";
 import React, { useState } from "react";
 
 function QuizForm({onSubmit}) {
-    const [category,setCategory] = useState();
-    const [amount,setAmount] = useState();
-    const [difficulty, setDifficulty] = useState();
-    const [typeOfQuestions, setTypeOfQuestions] = useState();
+    const [category,setCategory] = useState("9");
+    const [amount,setAmount] = useState(1);
+    const [difficulty, setDifficulty] = useState("easy");
+    const [typeOfQuestions, setTypeOfQuestions] = useState("multiple");
 
     const handleSubmit = (e) => {
-        // e.preventDefault();
+        e.preventDefault();
         onSubmit({ 
             category,
             amount,

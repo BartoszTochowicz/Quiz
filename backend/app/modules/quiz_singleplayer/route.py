@@ -60,6 +60,7 @@ def get_quiz():
       404:
         description: Quiz not found or fetch failed
     """
+    print("Fetching single player quiz")
     result,status = singlePlayerQuizController.fetch_quiz()
     if status !=200:
         return make_response(jsonify(result),status)

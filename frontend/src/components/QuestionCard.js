@@ -1,17 +1,17 @@
 import React from "react";
 
-function QuestionCard({ question, answers, onAnswer }) {
+function QuestionCard({ question, onAnswer }) {
   return (
     <div className="question-card">
-      <h3 dangerouslySetInnerHTML={{ __html: question }} />
+      <h3>{question.question}</h3>
       <ul>
-        {Object.entries(answers)
-          .filter(([_, val]) => val)
-          .map(([key, val]) => (
-            <li key={key}>
-              <button onClick={() => onAnswer(key)}>{val}</button>
-            </li>
-          ))}
+        {question.answers.map((answer,index) => (
+          <li key={index}>
+            <button onClick={()=>onAnswer(answer,question.token)}>
+              {answer}
+            </button>
+          </li>
+        ))}
       </ul>
     </div>
   );

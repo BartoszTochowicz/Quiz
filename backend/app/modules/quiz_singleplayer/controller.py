@@ -17,6 +17,7 @@ class SinglePlayerQuizController():
         category = request.args.get('category')
         difficulty = request.args.get('difficulty')
         type_of_questions = request.args.get('type_of_questions')
+        print("amount:", amount, "category:", category, "difficulty:", difficulty, "type_of_questions:", type_of_questions)
         if not all([amount,category,difficulty,type_of_questions]):
             return {"error": "Missing required parameters"}, 400
         try:
@@ -27,9 +28,10 @@ class SinglePlayerQuizController():
                 return {"error":"Invalid quiz request"},404
             result = []
             quiz_id = self.generate_ID()
-            
+            category_name = data["results"][0]["category"] if data["results"] else ""
             for quiz in data["results"]:
                 question_id = self.generate_ID()
+                question = quiz["question"]
                 answers = [quiz["correct_answer"]]+quiz["incorrect_answers"]
                 token = self.encode_jwt(
                     quiz_id=str(quiz_id),
@@ -39,10 +41,11 @@ class SinglePlayerQuizController():
                     correct_answer=quiz["correct_answer"])
                 result.append({
                     "question_id":str(question_id),
+                    "question":question,
                     "answers": answers,
                     "token":token
                 })
-            return {"quiz_id":str(quiz_id),"questions":result}, 200
+            return {"quiz_id":str(quiz_id),"category":category_name,"questions":result}, 200
         except Exception as e:
             return {"error": f"Exception occured: {str(e)}"},500
     @final
