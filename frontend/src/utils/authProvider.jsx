@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
         
         authCheckInProgress.current = true;
         
-        authApi.get("/api/v1/auth/login")
+        authApi.get("http://localhost:5000/api/v1/auth/login")
         .then((response) => {
             const isAuth = response.status === 200;
             console.log("Auth check response:", response);
