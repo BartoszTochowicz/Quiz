@@ -3,12 +3,14 @@ import uuid
 from flask_jwt_extended import current_user
 import jwt
 import requests
+from datetime import timedelta
 
 from typing import final 
 
 from flask import request
 from app.db.db import db
 from app.config.config import BaseConfig
+from jwt import ExpiredSignatureError
 from app.db.models import QuizSinglePlayer
 
 class SinglePlayerQuizController():
@@ -59,17 +61,20 @@ class SinglePlayerQuizController():
             "category":category,
             "answers":answers,
             "correct_answer":correct_answer,
-            "exp": int((now+datetime.timedelta(minutes=10)).timestamp())
+            "exp": int((now+timedelta(minutes=1230)).timestamp())
         }
+        print("exp:", payload.get("exp"), "now:", int(now.timestamp()))
         baseConfig =BaseConfig()
         token = jwt.encode(payload,baseConfig.JWT_SECRET_KEY,algorithm="HS256")
         return token
     @final
     def decode_jwt(self,token):
         baseConfig = BaseConfig()
-        result = jwt.decode(token,baseConfig.JWT_SECRET_KEY,algorithms="HS256")
-        return result
-
+        try:
+            result = jwt.decode(token,baseConfig.JWT_SECRET_KEY,algorithms="HS256")
+            return result
+        except ExpiredSignatureError:
+            return {"error":"Token expired"}
     @final
     def generate_ID(self):
         # Generate either question id and quiz id
@@ -82,13 +87,17 @@ class SinglePlayerQuizController():
             userAnswer = response.get("answer")
 
             result = self.decode_jwt(token=token)
+            print("Decoded result:", result)
+            if "error" in result:
+                return result, 400
             quiz_id = result["quiz_id"]
             correctAnswer = result["correct_answer"]
             category = result["category"]
 
             now = datetime.datetime.utcnow()
-            if result.get("exp")<int(now.timestamp()):
-                return {"error":"Token expired"},400
+            # print("exp:", result.get("exp"), "now:", int(now.timestamp()))
+            # if result.get("exp")<int(now.timestamp()):
+            #     return {"error":"Token expired"},400
             
             is_correct = userAnswer==correctAnswer
             score = 1 if is_correct else 0
@@ -113,4 +122,23 @@ class SinglePlayerQuizController():
                 "current_score":quiz.score
                 },200
         except Exception as e:
-            return {"error":"Error occuered"+str(e)},500
+            print("Error occuered"+str(e))
+            raise
+    @final
+    def get_score(self,quiz_id):
+        try:
+            quiz = QuizSinglePlayer.query.filter_by(quiz_id=quiz_id).first()
+            if quiz is None:
+                return {"error":"Quiz not found"},404
+            score = quiz.score
+            total_questions = quiz.total_questions
+            category = quiz.category
+            return {
+                "quiz_id":quiz_id,
+                "category":category,
+                "score":score,
+                "total_questions":total_questions,
+            },200
+        except Exception as e:
+            print("Error occurred while getting score: "+str(e))
+            return {"error":"Internal server error"},500

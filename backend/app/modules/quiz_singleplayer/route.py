@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, make_response
+from flask import Blueprint, jsonify, make_response,request
 from flask_jwt_extended import jwt_required
 
 from .controller import SinglePlayerQuizController
@@ -68,19 +68,22 @@ def get_quiz():
 
 @singlePlayer_bp.post('/quiz/singleplayer/answer')
 @jwt_required()
-def post_answer(response):
-    singlePlayerQuizController.check_answer(response)
+def post_answer():
+    try:
+        print("POST /quiz/singleplayer/answer called")
+        response = request.get_json()
+        print("Received data:", response)
+        result, status = singlePlayerQuizController.check_answer(response)
+        return make_response(jsonify(result), status)
+    except Exception as e:
+        print("Error in post_answer:", e)
+        return make_response(jsonify({"error": str(e)}), 500)
 
-@singlePlayer_bp.get('/quiz/singleplayer/score/<quiz_id>')
+@singlePlayer_bp.get('/quiz/singleplayer/score')
 @jwt_required()
-def get_score(quiz_id):
-    quiz = QuizSinglePlayer.query.filter_by(quiz_id=quiz_id).first()
-    if not quiz:
-        return jsonify({"error": "Quiz not found"}),404
-    return jsonify({
-        "category":quiz.category,
-        "score":quiz.score,
-        "total_questions": quiz.total.questions,
-        "username": quiz.total.username,
-        "timestamp": quiz.timestamp.isoformat()
-    }),200
+def get_score():
+    quiz_id = request.args.get("quiz_id")
+    if not quiz_id:
+        return make_response(jsonify({"error": "Missing quiz_id parameter"}),400)
+    result,status =singlePlayerQuizController.get_score(quiz_id)
+    return make_response(jsonify(result),status)

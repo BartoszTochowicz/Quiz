@@ -29,6 +29,10 @@ def initialize_jwt(app: Flask):
         from app.db.models import User
         jwt.init_app(app)
 
+        @jwt.user_lookup_loader
+        def user_lookup_callback(_jwt_header,jwt_data):
+            identity = jwt_data["sub"]
+            return User.query.filter_by(id=identity).one_or_none()
         @jwt.expired_token_loader
         def expierd_token_callback():
             return jsonify({
