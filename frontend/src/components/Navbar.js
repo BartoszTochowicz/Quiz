@@ -6,7 +6,7 @@ function Navbar() {
     <nav className="navbar">
       <Link to="/" >Quiz App</Link>
       <Link to="/login" >Login</Link>
-
+      <Link to="/account" >Account</Link>
     </nav>
   );
 }
