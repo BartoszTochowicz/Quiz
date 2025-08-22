@@ -6,6 +6,7 @@ import Quiz from "./pages/Quiz";
 import Result from "./pages/Result";
 import Login from "./pages/Login";
 import { AuthProvider } from "./utils/authProvider";
+import Account from "./pages/Account";
 
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
         <Route path="/quiz" element={<Quiz />} />
         <Route path="/result" element={<Result />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/account" element={<Account/>}/>
 
       </Routes>
     </Router>
