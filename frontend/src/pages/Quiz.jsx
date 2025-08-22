@@ -45,12 +45,18 @@ function Quiz() {
           headers:{
             Authorization:`Bearer ${localStorage.getItem("access_token")}`
           }
+        }).then(res => {
+          const score = res.data.score;
+          const category = quizData.category;
+          const total = res.data.total_questions;
+          localStorage.setItem("quiz_score", JSON.stringify({ score, total, category }));
+          navigate("/result");
         })
-        const score = response.score
-        const category = quizData.category;
-        const total = quizData.questions.length;
-        localStorage.setItem("quiz_score", JSON.stringify({ score, total, category }));
-        navigate("/result");
+        // const score = response.score
+        // const category = quizData.category;
+        // const total = quizData.questions.length;
+        // localStorage.setItem("quiz_score", JSON.stringify({ score, total, category }));
+        // navigate("/result");
       }else{
         setQuestionIndex(questionIndex+1);
       }

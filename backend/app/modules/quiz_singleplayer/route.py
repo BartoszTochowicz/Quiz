@@ -86,4 +86,5 @@ def get_score():
     if not quiz_id:
         return make_response(jsonify({"error": "Missing quiz_id parameter"}),400)
     result,status =singlePlayerQuizController.get_score(quiz_id)
+    print("Score result:", result, "Status:", status)
     return make_response(jsonify(result),status)

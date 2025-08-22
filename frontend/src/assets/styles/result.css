@@ -1,0 +1,32 @@
+.container {
+    text-align: center;
+    position:relative;
+    width: 500px;
+    margin: 0 auto;
+}
+
+.progress-bar-bg{
+    width: 100%;
+    height: 30px;
+    background-color: #ff000096;
+    position: relative;
+    border-radius: 12.5px;
+    overflow: hidden;
+
+}
+
+.progress-bar{
+    background-color: #2bff1c96;
+
+    width: 100px;
+    height: 100%;
+    position: absolute;
+    border-radius: 12.5px;
+    /* margin:10px; */
+    transition: width 1.2s cubic-bezier(.4,0,.2,1);
+}
+
+/* @keyframes proress-animation {
+    0% {width:0%;}
+    100% {width:100%;}
+} */
