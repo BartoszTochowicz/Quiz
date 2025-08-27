@@ -24,16 +24,44 @@ class TokenBlocklist(db.Model):
     jti = db.Column(db.String(36), nullable=False, index=True)
     created_at = db.Column(db.DateTime, nullable=False)
 
-class QuizSinglePlayer(db.Model):
-    __tablename__ = "quiz_singlePlayer"
-    quiz_id = mapped_column(sa.String(255),primary_key=True,unique=True,nullable=False)
-    username = mapped_column(sa.String(255),nullable=False)
-    category = mapped_column(sa.String(255),nullable=False)
-    score = mapped_column(db.Integer,nullable=False)
-    total_questions = mapped_column(db.Integer,nullable=False)
-    timestamp = mapped_column(db.DateTime, nullable=False)
+class Quiz(db.Model):
+    __tablename__ = "quiz"
+    quiz_id = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
+    category = db.Column(db.String(255), nullable=False)
+    questions = db.Column(db.JSON, nullable=False, default=[])  # List of question IDs or question dicts
+    total_questions = db.Column(db.Integer, nullable=False)
+    difficulty = db.Column(db.String(50), nullable=False)
+    type_of_questions = db.Column(db.String(50), nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False)
 
     def increase_score(self,score):
         self.score += score
     def add_question_to_total(self,question):
         self.total_questions += question
+
+class Lobby(db.Model):
+    __tablename__ = "lobby"
+    lobby_id = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
+    host_username = db.Column(db.String(255), nullable=False)
+    max_players = db.Column(db.Integer, nullable=False)
+    players = db.Column(db.PickleType, nullable=False, default=[])  # List of usernames
+    category = db.Column(db.String(255), nullable=False)
+    isOpen = db.Column(db.Boolean, nullable=False, default=True)
+    status = db.Column(db.String(50), nullable=False)  # waiting, in_game, finished
+    password = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False)
+    quiz_id = db.Column(db.String(255), nullable=True)  # Associated quiz ID
+    
+    def check_password(self,password):
+        return check_password_hash(self.password,password)
+    def set_password(self,password):
+        self.password = generate_password_hash(password=password)
+
+class QuizParticipant(db.Model):
+    __tablename__ = "quiz_participant"
+    id = db.Column(db.Integer,primary_key=True)
+    quiz_id = db.Column(db.String(255),db.ForeignKey('quiz.quiz_id'),nullable=False)
+    username = db.Column(db.String(255),nullable=False)
+    score = db.Column(db.Integer,nullable=False, default=0)
+    current_quesition = db.Column(db.Integer,nullable=False, default=0)
+    answers = db.Column(db.PickleType, nullable=False, default=[])  # List of answers given by the participant

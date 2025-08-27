@@ -11,7 +11,7 @@ from flask import request
 from app.db.db import db
 from app.config.config import BaseConfig
 from jwt import ExpiredSignatureError
-from app.db.models import QuizSinglePlayer
+from app.db.models import Quiz
 
 class SinglePlayerQuizController():
     def fetch_quiz(self):
@@ -102,10 +102,10 @@ class SinglePlayerQuizController():
             is_correct = userAnswer==correctAnswer
             score = 1 if is_correct else 0
 
-            quiz = QuizSinglePlayer.query.filter_by(quiz_id=quiz_id).first()
+            quiz = Quiz.query.filter_by(quiz_id=quiz_id).first()
 
             if quiz is None:
-                quiz = QuizSinglePlayer(
+                quiz = Quiz(
                 quiz_id = quiz_id,
                 category = category,
                 username = current_user.username,
@@ -127,7 +127,7 @@ class SinglePlayerQuizController():
     @final
     def get_score(self,quiz_id):
         try:
-            quiz = QuizSinglePlayer.query.filter_by(quiz_id=quiz_id).first()
+            quiz = Quiz.query.filter_by(quiz_id=quiz_id).first()
             if quiz is None:
                 return {"error":"Quiz not found"},404
             score = quiz.score
