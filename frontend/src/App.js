@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-import Quiz from "./pages/Quiz";
+import QuizSingleplayer from "./pages/QuizSingleplayer";
 import Result from "./pages/Result";
 import Login from "./pages/Login";
 import { AuthProvider } from "./utils/authProvider";
@@ -16,7 +16,7 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/quiz" element={<Quiz />} />
+        <Route path="/quiz/singleplayer" element={<QuizSingleplayer />} />
         <Route path="/result" element={<Result />} />
         <Route path="/login" element={<Login />} />
         <Route path="/account" element={<Account/>}/>
