@@ -63,5 +63,5 @@ class QuizParticipant(db.Model):
     quiz_id = db.Column(db.String(255),db.ForeignKey('quiz.quiz_id'),nullable=False)
     username = db.Column(db.String(255),nullable=False)
     score = db.Column(db.Integer,nullable=False, default=0)
-    current_quesition = db.Column(db.Integer,nullable=False, default=0)
+    current_question = db.Column(db.Integer,nullable=False, default=0)
     answers = db.Column(db.PickleType, nullable=False, default=[])  # List of answers given by the participant

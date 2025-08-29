@@ -5,4 +5,4 @@ from flask_socketio import SocketIO
 cors = CORS()
 swagger = Swagger()
 jwt = JWTManager()
-socketio = SocketIO(cors_allowed_origins='http://localhost:3000')
+socketio = SocketIO(cors_allowed_origins='*')

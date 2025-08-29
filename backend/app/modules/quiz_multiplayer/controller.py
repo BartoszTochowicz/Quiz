@@ -8,7 +8,7 @@ from flask import request
 import requests
 from html import unescape
 
-from app.db.models import Quiz
+from app.db.models import Quiz, QuizParticipant
 from app.db.db import db
 from app.db.models import Lobby
 
@@ -25,7 +25,7 @@ class QuizMultiplayerController:
             quiz_id = self.generate_ID()
             category_name = data["results"][0]["category"]
             questions = []
-            question_id = 1
+            question_id = 0
             for quiz in data["results"]:
                 question = unescape(quiz["question"])
                 choices = [quiz["correct_answer"]]+quiz["incorrect_answers"]
@@ -105,7 +105,11 @@ class QuizMultiplayerController:
                 quiz_id=str(quiz_id)
             )
             new_lobby.set_password(password)
-            db.session.add(new_lobby)
+            quiz_participant = QuizParticipant(
+                quiz_id = str(quiz_id),
+                username = host_username
+            )
+            db.session.add(new_lobby,quiz_participant)
             db.session.commit()
         except Exception as e:
             print(f"Error creating lobby: {str(e)}")

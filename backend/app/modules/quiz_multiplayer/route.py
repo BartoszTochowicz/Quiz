@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, make_response
+from flask_jwt_extended import jwt_required
 
 from .controller import QuizMultiplayerController
 
