@@ -65,3 +65,9 @@ def get_quiz():
     if status !=200:
         return make_response(jsonify(result),status)
     return make_response(jsonify({"message": "Quiz fetched successfully", "data": result}),status)
+
+@multiplayer_bp.post("lobby/create")
+@jwt_required()
+def post_lobby():
+    result,status = multiPlayerQuizController.create_lobby()
+    return make_response(jsonify(result),status)

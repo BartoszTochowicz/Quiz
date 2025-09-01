@@ -15,6 +15,7 @@ from app.db.models import Lobby
 
 
 class QuizMultiplayerController:
+    @final
     def fetch_quiz(self,amount,category,difficulty,type_of_questions):
         try:
             response = requests.get(f'https://opentdb.com/api.php?amount={amount}&category={category}&difficulty={difficulty}&type={type_of_questions}')
@@ -88,6 +89,7 @@ class QuizMultiplayerController:
             print("Lobby_id already exist")
             lobby_id = self.generate_ID()
         host_username = data.get("host_username")
+        lobby_name = data.get("lobby_name")
         max_players = data.get("max_players")
         isOpen = data.get("isOpen",True)
         password = data.get("password",None)
@@ -96,6 +98,7 @@ class QuizMultiplayerController:
             new_lobby = Lobby(
                 lobby_id=str(lobby_id),
                 host_username=host_username,
+                lobby_name = lobby_name,
                 max_players=max_players,
                 players=[host_username],
                 category=category_name,
@@ -111,7 +114,20 @@ class QuizMultiplayerController:
             )
             db.session.add(new_lobby,quiz_participant)
             db.session.commit()
+            return {"message":"Lobby created successfully","data":{
+                "lobby_id": str(lobby_id),
+                "host_username": host_username,
+                "lobby_name": lobby_name,
+                "max_players": max_players,
+                "players": [host_username],
+                "category": category_name,
+                "isOpen": isOpen,
+                "status": "waiting",
+                "created_at": created_at.isoformat(),
+                "quiz_id": str(quiz_id)
+            }},201
         except Exception as e:
             print(f"Error creating lobby: {str(e)}")
             db.session.rollback()
+            return {"error":"Failed to create lobby"},500
     

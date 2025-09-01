@@ -1,0 +1,119 @@
+import { Form } from "react-router-dom";
+import React, { use, useState } from "react";
+
+function LobbyForm({onSubmit}) {
+    const [category,setCategory] = useState("9");
+    const [amount,setAmount] = useState(1);
+    const [difficulty, setDifficulty] = useState("easy");
+    const [typeOfQuestions, setTypeOfQuestions] = useState("multiple");
+    const [maxPlayers, setMaxPlayers] = useState(2);
+    const [lobbyName, setLobbyName] = useState("");
+    const [isOpen, setIsOpen] = useState(true);
+    const [password, setPassword] = useState("");
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit({ 
+            category,
+            amount,
+            difficulty,
+            type_of_questions:typeOfQuestions,
+            hostname,
+            max_players: maxPlayers,
+            lobby_name: lobbyName,
+            isOpen: isOpen,
+            password: password})
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="quiz-form">
+            <h2>Select Quiz Requirements</h2>
+            <label>Lobby Name</label>
+            <input
+                type = "text"
+                placeholder="Lobby Name"
+                value={lobbyName}
+                onChange={e => setLobbyName(e.target.value)}
+            />
+            <br/>
+            <label>Is Lobby Open?</label>
+            <input
+                type="checkbox"
+                checked={isOpen}
+                onChange={e => setIsOpen(e.target.checked)}
+            />
+            <br/>
+            {!isOpen &&(
+                <>
+                    <label>Lobby password</label>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                    />
+                </>
+            )}
+            <label>Choose max players in lobby</label>
+            <input
+                type="number"
+                min={2}
+                max={10}
+                value={maxPlayers}
+                onChange={e=> setMaxPlayers(e.target.value)}
+            />
+            <br/>
+                        <label>Select category</label>
+            <select value={category} onChange={e => setCategory(e.target.value)}>
+                <option value="9">General Knowledge</option>
+                <option value="10">Entertainment: Books</option>
+                <option value="11">Entertainment: Film</option>
+                <option value="12">Entertainment: Music</option>
+                <option value="13">Entertainment: Musicals & Theatres</option>
+                <option value="14">Entertainment: Television</option>
+                <option value="15">Entertainment: Video Games</option>
+                <option value="16">Entertainment: Board Games</option>
+                <option value="17">Science & Nature</option>
+                <option value="18">Science: Computers</option>
+                <option value="19">Science: Mathematics</option>
+                <option value="20">Mythology</option>
+                <option value="21">Sports</option>
+                <option value="22">Geography</option>
+                <option value="23">History</option>
+                <option value="24">Politics</option>
+                <option value="25">Art</option>
+                <option value="26">Celebrities</option>
+                <option value="27">Animals</option>
+                <option value="28">Vehicles</option>
+                <option value="29">Entertainment: Comics</option>
+                <option value="30">Science: Gadgets</option>
+                <option value="31">Entertainment: Japanese Anime & Manga</option>
+                <option value="32">Entertainment: Cartoon & Animations</option>
+            </select>
+            <br/>
+            <label>Number of questions</label>
+            <input
+                type="number"
+                min={1} 
+                max={50} 
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+            />
+            <br/>
+            <label>Select difficulty</label>
+            <select value={difficulty} onChange={e => setDifficulty(e.target.value)}>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+            <br/>
+            <label>Type of questions</label>
+            <select value={typeOfQuestions} onChange={e => setTypeOfQuestions(e.target.value)}>
+                <option value="multiple">Multiple Choice</option>
+                <option value="boolean">True/False</option>
+            </select>
+            <br/>
+            <button type="submit">Create Lobby</button>
+        </form>
+    );
+}
+export default LobbyForm

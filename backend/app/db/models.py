@@ -42,6 +42,7 @@ class Quiz(db.Model):
 class Lobby(db.Model):
     __tablename__ = "lobby"
     lobby_id = db.Column(db.String(255), primary_key=True, unique=True, nullable=False)
+    lobby_name = db.Column(db.String(255),nullable = False)
     host_username = db.Column(db.String(255), nullable=False)
     max_players = db.Column(db.Integer, nullable=False)
     players = db.Column(db.PickleType, nullable=False, default=[])  # List of usernames
