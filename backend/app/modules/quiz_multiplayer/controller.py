@@ -85,7 +85,7 @@ class QuizMultiplayerController:
             return {"error":"Failed to save quiz"},500
         
         lobby_id = self.generate_ID()
-        if Lobby.querry.filter_by(lobby_id=lobby_id):
+        if Lobby.query.filter_by(lobby_id=lobby_id):
             print("Lobby_id already exist")
             lobby_id = self.generate_ID()
         host_username = data.get("host_username")
