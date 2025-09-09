@@ -1,3 +1,5 @@
+import { data } from "react-router-dom";
+import { io } from 'socket.io-client';
 
 
 const URL = "http://localhost:5000"; 
@@ -12,10 +14,12 @@ class SocketService {
             onDisconnect : null,
             onRefresh : null,
             onFooEvent : null,
+            onListLobbies: null,
             onLobbyCreated : null,
             onLobbyDeleted : null,
             onPlayerJoined : null,
             onPlayerLeft : null,
+            onLobbyUsersUpdate : null,
             onAuthFail : null,
             onQuizStart : null,
             onNextQuestion : null,
@@ -114,6 +118,14 @@ class SocketService {
             }
         });
 
+        this.socket.on('list_lobbies', (data)=>{
+            console.log('Lobbies loaded');
+
+            if(this.callbacks.onListLobbies){
+                this.callbacks.onListLobbies(data)
+            }
+        })
+
         this.socket.on('create_lobby', (data) => {
             console.log("Lobby created:",data);
             
@@ -145,6 +157,14 @@ class SocketService {
                 this.callbacks.onPlayerLeft(data);
             }
         });
+
+        this.socket.on('update_lobby_users', (data) =>{
+            console.log("Updated lobby users: ",data.users)
+
+            if(this.callbacks.onLobbyUsersUpdate){
+                this.callbacks.onLobbyUsersUpdate(data.users);
+            }
+        })
 
         this.socket.on('start_quiz', (data) => {
             console.log('Quiz started:',data);

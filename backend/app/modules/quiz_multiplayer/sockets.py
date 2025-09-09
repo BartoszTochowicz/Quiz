@@ -94,6 +94,11 @@ def handle_join_lobby(data):
         db.session.rollback()
         emit('error', {'message': 'Internal server error'})
         return
+    
+    participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
+    usernames = [p.username for p in participants]
+
+    emit('update_lobby_users', {'users': usernames}, room=lobby_id)
 
     join_room(lobby_id)
     emit('user_joined', {'username': username}, room=lobby_id)
@@ -117,6 +122,12 @@ def handle_leave_lobby(data):
         db.session.rollback()
         emit('error', {'message': 'Internal server error'})
         return
+    
+    participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
+    usernames = [p.username for p in participants]
+
+    emit('update_lobby_users', {'users': usernames}, room=lobby_id)
+
     leave_room(lobby_id)
     emit('user_left', {'username': username}, room=lobby_id)
     if len(lobby.players)==0:
@@ -146,6 +157,42 @@ def handle_delete_lobby(data):
     # Notify all users in the lobby that it has been deleted
     db.session.delete(lobby)
     db.session.commit()
+
+@socketio.on('get_lobby_details')
+def handle_get_lobby_details(data):
+    lobby_id = data.get('lobby_id')
+    lobby = Lobby.query.filter_by(lobby_id=lobby_id).first()
+    if not lobby:
+        emit('error', {'message': 'Lobby not found'})
+        return
+    participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
+    usernames = [p.username for p in participants]
+    
+    lobby_data = {
+        'lobby_id': lobby.lobby_id,
+        'lobby_name': lobby.lobby_name,
+        'host_username': lobby.host_username,
+        'max_players': lobby.max_players,
+        'current_players': len(lobby.players),
+        'players': usernames
+    }
+    emit('lobby_details', lobby_data)
+
+@socketio.on('list_lobbies')
+def handle_list_lobbies():
+    lobbies = Lobby.query.all()
+    lobbies_data = []
+    for lobby in lobbies:
+        lobbies_data.append({
+            'lobby_id': lobby.lobby_id,
+            'host_username': lobby.host_username,
+            'max_players': lobby.max_players,
+            'current_players': len(lobby.players),
+            'isOpen': lobby.isOpen,
+            'status': lobby.status
+        })
+    emit('lobbies_list', {'lobbies': lobbies_data})
+
 
 @socketio.on('start_quiz')
 def handle_start_quiz(data):
