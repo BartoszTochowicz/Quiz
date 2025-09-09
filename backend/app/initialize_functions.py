@@ -13,8 +13,10 @@ def initialize_db(app: Flask):
 def initialize_route(app: Flask):
     from app.modules.auth.route import auth_bp
     from app.modules.quiz_singleplayer.route import singlePlayer_bp
+    from app.modules.quiz_multiplayer.route import multiplayer_bp
     app.register_blueprint(auth_bp,url_prefix='/api/v1/auth')
     app.register_blueprint(singlePlayer_bp,url_prefix = '/api/v1/singleplayer')
+    app.register_blueprint(multiplayer_bp,url_prefix = '/api/v1/multiplayer')
 
 def initialize_swagger(app:Flask):
     with app.app_context():
