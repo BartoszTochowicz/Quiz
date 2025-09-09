@@ -10,6 +10,11 @@ function Home() {
           <button>Start Quiz - <b>Singleplayer</b></button>
         </Link>
       </div>
+      <div className="container-quiz">
+        <Link to="/lobby">
+          <button><b>Multiplayer</b></button>
+        </Link>
+      </div>
       {/* <div className="container-quiz">
         <Link to="/quiz/multyplayer">
           <button>Start Quiz - <b>Multyplayer</b></button>

@@ -1,5 +1,6 @@
 import { Form } from "react-router-dom";
-import React, { use, useState } from "react";
+import React, { use, useContext, useState } from "react";
+import AuthContext from "../utils/authProvider";
 
 function LobbyForm({onSubmit}) {
     const [category,setCategory] = useState("9");
@@ -10,15 +11,17 @@ function LobbyForm({onSubmit}) {
     const [lobbyName, setLobbyName] = useState("");
     const [isOpen, setIsOpen] = useState(true);
     const [password, setPassword] = useState("");
+    const {username} = useContext(AuthContext);
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        console.log(username);
         onSubmit({ 
             category,
             amount,
             difficulty,
             type_of_questions:typeOfQuestions,
-            hostname,
+            host_username:username,
             max_players: maxPlayers,
             lobby_name: lobbyName,
             isOpen: isOpen,
