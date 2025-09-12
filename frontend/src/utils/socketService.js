@@ -14,17 +14,18 @@ class SocketService {
             onDisconnect : null,
             onRefresh : null,
             onFooEvent : null,
-            onListLobbies: null,
-            onLobbyCreated : null,
-            onLobbyDeleted : null,
-            onPlayerJoined : null,
-            onPlayerLeft : null,
-            onLobbyUsersUpdate : null,
+            onLobbiesListed: null,//
+            onLobbyCreated : null,//
+            onLobbyDeleted : null,//
+            onPlayerJoined : null,//
+            onPlayerLeft : null,//
+            onLobbyDetails : null,//
+            onLobbyUpdated : null,//
             onAuthFail : null,
-            onQuizStart : null,
+            onQuizStarted : null,
             onNextQuestion : null,
-            onSubmitAnswer : null,
-            onQuizEnd : null,
+            onAnswerSubmited : null,
+            onQuizEnded : null,
             onError : null
         };
         console.log("SocketService constructor called");
@@ -44,6 +45,7 @@ class SocketService {
         this.authToken = authToken;
 
         this.socket = io(URL, {
+            // transports: ["websocket"],
             autoConnect: false,
             extraHeaders: {
                 "Authorization": `Bearer ${authToken}`
@@ -51,6 +53,7 @@ class SocketService {
             auth:{
                 token: authToken
             }
+            // query: {token: authToken}
         });
         this.setupEventListeners();
         this.socket.connect();
@@ -118,15 +121,15 @@ class SocketService {
             }
         });
 
-        this.socket.on('list_lobbies', (data)=>{
+        this.socket.on('lobbies_listed', (data)=>{
             console.log('Lobbies loaded');
 
-            if(this.callbacks.onListLobbies){
-                this.callbacks.onListLobbies(data)
+            if(this.callbacks.onLobbiesListed){
+                this.callbacks.onLobbiesListed(data)
             }
         })
 
-        this.socket.on('create_lobby', (data) => {
+        this.socket.on('lobby_created', (data) => {
             console.log("Lobby created:",data);
             
             if(this.callbacks.onLobbyCreated){
@@ -134,7 +137,7 @@ class SocketService {
             }
         });
 
-        this.socket.on('delete_lobby', (data) => {
+        this.socket.on('lobby_deleted', (data) => {
             console.log("Lobby deleted:",data);
 
             if(this.callbacks.onLobbyDeleted){
@@ -142,7 +145,7 @@ class SocketService {
             }
         });
 
-        this.socket.on('join_lobby', (data) => {
+        this.socket.on('player_joined', (data) => {
             console.log("Player joined:",data);
 
             if(this.callbacks.onPlayerJoined){
@@ -150,7 +153,7 @@ class SocketService {
             }
         });
 
-        this.socket.on('leave_lobby',(data) => {
+        this.socket.on('player_left',(data) => {
             console.log("Player left:",data);
 
             if(this.callbacks.onPlayerLeft){
@@ -158,23 +161,30 @@ class SocketService {
             }
         });
 
-        this.socket.on('update_lobby_users', (data) =>{
-            console.log("Updated lobby users: ",data.users)
-
-            if(this.callbacks.onLobbyUsersUpdate){
-                this.callbacks.onLobbyUsersUpdate(data.users);
+        this.socket.on('lobby_details', (data) => {
+            console.log("Lobby details received:",data);
+            if(this.callbacks.onLobbyDetails){
+                this.callbacks.onLobbyDetails(data);
             }
         })
 
-        this.socket.on('start_quiz', (data) => {
+        this.socket.on('lobby_updated', (data) =>{
+            console.log("Updated lobby users: ",data.users)
+
+            if(this.callbacks.onLobbyUpdated){
+                this.callbacks.onLobbyUpdated(data.users);
+            }
+        })
+
+        this.socket.on('quiz_started', (data) => {
             console.log('Quiz started:',data);
 
-            if(this.callbacks.onQuizStart){
-                this.callbacks.onQuizStart(data);
+            if(this.callbacks.onQuizStarted){
+                this.callbacks.onQuizStarted(data);
             }
         });
 
-        this.socket.on('submit_answer', (data) => {
+        this.socket.on('answer_submited', (data) => {
             console.log('Answer submited:',data);
 
             if(this.callbacks.onSubmitAnswer){
@@ -193,8 +203,8 @@ class SocketService {
         this.socket.on("end_quiz", (data) => {
             console.log('Quiz ended:',data);
 
-            if(this.callbacks.onQuizEnd){
-                this.callbacks.onQuizEnd(data);
+            if(this.callbacks.onQuizEnded){
+                this.callbacks.onQuizEnded(data);
             }
         });
     }
@@ -206,6 +216,10 @@ class SocketService {
 
         while(this.messageQueue.length > 0){
             const {event, data, resolve, reject} = this.messageQueue.shift();
+            if(!this.socket){
+                reject(new Error("Socket is null. Cannot emit: " + event));
+                continue;
+            }
             try{
                 this.socket.emit(event,data, (response)=>{
                     if(response && response.error){
@@ -287,9 +301,9 @@ class SocketService {
             this.socket.removeAllListeners();
             this.socket.disconnect();
             this.socket = null;
-            this.isConnected = false;
-            this.authToken = null;
         }
+        this.isConnected = false;
+        this.authToken = null;
     }
 
     reconnect(newAuthToken) {

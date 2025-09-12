@@ -29,7 +29,7 @@ function Lobbies() {
 
         // Initialize socket service with callbacks
         socketService.initialize({
-            onListLobbies: (data) => {
+            onLobbiesListed: (data) => {
                 console.log("Received lobby list:", data);
                 setLobbies(data.lobbies);
             },
@@ -37,6 +37,16 @@ function Lobbies() {
                 setIsJoining(false);
                 triggerAuthCheck();
             },
+            onPlayerJoined: (data) => {
+                console.log("Joined lobby successfully:", data);
+                setIsJoining(true);
+                navigation(`/lobby/${data.lobby_id}`);
+            },
+            onLobbyDeleted: (data) => {
+                const deletedId = data.lobby_id;
+                setLobbies((prev) => prev.filter((lobby) => lobby.lobby_id !== deletedId));
+                console.log("Lobby deleted",data);
+            }
         });
 
         // Connect to socket server
@@ -46,6 +56,7 @@ function Lobbies() {
             console.log("Cleaning up socket connection");
             if (!isAuthenticated) {
                 socketService.disconnect();
+                socketInitialized.current = false;
             }
         };
     }, [isAuthenticated, authToken, triggerAuthCheck]);
@@ -54,19 +65,24 @@ function Lobbies() {
         socketService.reconnect(authToken);
     }, [authToken]);
 
+    useEffect(() => {
+        socketService.emit('list_lobbies');
+    },[])
+
     const joinLobby = (lobbyId) => {
         console.log("Joining lobby:", lobbyId);
-        socketService.emit('join_lobby', { "lobby_id": lobbyId, 'username': username }, (response) => {
-            if (response.status === 'ok') {
-                console.log("Joined lobby successfully:", response);
-                setIsJoining(true);
-                navigation(`/lobby/${lobbyId}`);
-            } else {
-                console.error("Failed to join lobby:", response.message);
-                alert(`Failed to join lobby: ${response.message}`);
-            }
-        });
+        socketService.emit('join_lobby', { "lobby_id": lobbyId, 'username': username })
+            
+            // } else {
+            //     console.error("Failed to join lobby:", response.message);
+            //     alert(`Failed to join lobby: ${response.message}`);
+            // }
     };
+
+    const jumpIntoLobbyCreator = (() => {
+        console.log('Navigate to lobby creator');
+        navigation(`/lobby/create`);
+    });
 
     return (
         <div>
@@ -80,26 +96,49 @@ function Lobbies() {
                         <h2>Choose lobby to join</h2>
                         <div>
                             {lobbies.length === 0 && <p>No lobbies available. Create one!</p>}
-                            {lobbies ? (
-                                <ul>
-                                    {lobbies.map((lobby) => (
-                                        <li key={lobby.lobby_id}>
-                                            <strong>{lobby.name}</strong>
-                                            - {lobby.players} player{lobby.players !== 1 ? 's' : ''} / {lobby.max_players}
-                                            <button onClick={() => joinLobby(lobby.lobby_id)} disabled={isJoining}>
-                                                Join
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
+                            {lobbies.length > 0 ? (
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Lobby Name</th>
+                                            <th scope="col">Hostname</th>
+                                            <th scope="col">Players</th>
+                                            <th scope="col">Max Players</th>
+                                            <th scope="col">Join</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {lobbies.map((lobby) => (
+                                            <tr key={lobby.lobby_id}>
+                                                <th scope="row">{lobby.lobby_name}</th>
+                                                <th scope="row">{lobby.host_username}</th>
+                                                <th scope="row">{lobby.current_players}</th>
+                                                <th scope="row">{lobby.max_players}</th>
+                                                <th scope="row"><button onClick={() => joinLobby(lobby.lobby_id)} disabled={isJoining}>Join Lobby</button></th>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                // <ul>
+                                //     {lobbies.map((lobby) => (
+                                //         <li key={lobby.lobby_id}>
+                                //             <li>
+                                                
+                                //             </li>
+                                //             <b>lobby.name</b>
+                                //             - {lobby.players} player{lobby.current_players !== 1 ? 's' : ''} / {lobby.max_players}
+                                //             <button onClick={() => joinLobby(lobby.lobby_id)} disabled={isJoining}>
+                                //                 Join
+                                //             </button>
+                                //         </li>
+                                //     ))}
+                                // </ul>
                             ) : null}
                         </div>
                         {isJoining && <p>Joining lobby...</p>}
                     </div>
                     <h3>Do you want to create your own quiz?</h3>
-                    <Link to={"/lobby/create"}>
-                        <button>Create lobby</button>
-                    </Link> 
+                    <button onClick={jumpIntoLobbyCreator}>Create Lobby</button>
                 </main>
             </div>
         </div>
