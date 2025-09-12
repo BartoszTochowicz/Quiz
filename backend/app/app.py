@@ -1,7 +1,8 @@
 from flask import Flask
+from flask_cors import CORS
 from app.initialize_functions import initialize_swagger, initialize_cors, initialize_db, initialize_blocklist_cleanup, initialize_jwt,initialize_route,initialize_socketio
 from app.config.config import get_config_by_name
-
+import app.modules.quiz_multiplayer.sockets # Import sockets to register events
 
 def create_app(config=None) -> Flask:
     """

@@ -24,7 +24,7 @@ def initialize_swagger(app:Flask):
         return swagger
 def initialize_cors(app: Flask):
     with app.app_context():
-        cors.init_app(app,supports_credentials=True, origins=['http://localhost:3000'])
+        cors.init_app(app,supports_credentials=True, origins=['*'])
 
 def initialize_jwt(app: Flask):
     with app.app_context():
@@ -36,7 +36,7 @@ def initialize_jwt(app: Flask):
             identity = jwt_data["sub"]
             return User.query.filter_by(id=identity).one_or_none()
         @jwt.expired_token_loader
-        def expierd_token_callback():
+        def expierd_token_callback(jwt_header, jwt_payload):
             return jsonify({
                 'message' : 'Token has expierd. Please log in again.',
                 'error': 'token_expired'

@@ -10,7 +10,7 @@ class BaseConfig:
 
     JWT_SECRET_KEY = os.getenv('FLASK_JWT_SECRET_KEY')
     JWT_TOKEN_LOCATION = ["headers","cookies"]
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=10)
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=15)
     JWT_COOKIE_SECURE = True
     JWT_COOKIE_CSRF_PROTECT = True

@@ -79,6 +79,7 @@ def login():
     return make_response(result)
 
 @auth_bp.get('/login')
+@jwt_required()
 def login_get():
     """ Example endpoint for user login.
     ---
@@ -202,7 +203,7 @@ def logout_refresh():
               type: string
               example: "Logout successful!"      
     """
-    result = authController.refresh(get_jwt()['jti'], access=False)
+    result = authController.logout(get_jwt()['jti'], access=False)
     return make_response(result)
 @auth_bp.delete('/logout/access')
 @jwt_required()

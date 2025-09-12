@@ -66,7 +66,7 @@ def get_quiz():
         return make_response(jsonify(result),status)
     return make_response(jsonify({"message": "Quiz fetched successfully", "data": result}),status)
 
-@multiplayer_bp.post("lobby/create")
+@multiplayer_bp.post("/lobby/create")
 @jwt_required()
 def post_lobby():
     result,status = multiPlayerQuizController.create_lobby()

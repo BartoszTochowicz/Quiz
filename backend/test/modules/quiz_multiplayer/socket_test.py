@@ -1,5 +1,4 @@
 import socketio
-
 sio = socketio.Client()
 
 @sio.on('connect')
@@ -10,8 +9,9 @@ def on_connect():
 def on_disconnect():
     print("disconnected from server")
 
-sio.connect('http://localhost:5000')
-
-sio.emit('join_lobby', {'lobby_id':'1','username':'skibidi'})
-
-sio.wait()
+try:
+    sio.connect('http://localhost:5000', wait_timeout=10)  # Dodaj timeout
+    sio.emit('join_lobby', {'lobby_id': '1', 'username': 'skibidi'})
+    sio.wait()
+except socketio.exceptions.ConnectionError as e:
+    print("Connection failed:", e)

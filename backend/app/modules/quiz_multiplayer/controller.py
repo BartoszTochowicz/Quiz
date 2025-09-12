@@ -66,8 +66,8 @@ class QuizMultiplayerController:
         # Generate either question id and quiz id
         id = uuid.uuid4()
         return id
-    def create_lobby(self):
-        data = request.get_json()
+    def create_lobby(self,data):
+        # data = request.get_json()
         category = data.get("category")
         amount = data.get("amount")
         difficulty = data.get("difficulty")

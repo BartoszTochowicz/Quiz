@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from app.app import create_app
 from werkzeug.serving import WSGIRequestHandler
+# from app.modules.quiz_multiplayer.sockets import socketio
 from app.extensions import socketio
 
 
@@ -19,6 +20,7 @@ if __name__ == "__main__":
     if config == 'development':
         # app.run(debug=True, request_handler=CustomRequestHandler)
         socketio.run(app, debug=True, request_handler=CustomRequestHandler)
+        # socketio.run(app,host="0.0.0.0",port=5000, debug=True)
     else:
         from werkzeug.serving import run_simple
         run_simple('0.0.0.0', 5000, app)
