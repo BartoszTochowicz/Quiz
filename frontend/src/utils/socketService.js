@@ -38,6 +38,7 @@ class SocketService {
         this.callbacks = {...this.callbacks,...callbacks};
     }
     connect(authToken) {
+        console.log("authToken = ",authToken);
         if(this.socket && this.socket.connected){
             console.log("Socket already connected");
             return;

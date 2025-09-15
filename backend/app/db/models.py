@@ -66,3 +66,6 @@ class QuizParticipant(db.Model):
     score = db.Column(db.Integer,nullable=False, default=0)
     current_question = db.Column(db.Integer,nullable=False, default=0)
     answers = db.Column(db.PickleType, nullable=False, default=[])  # List of answers given by the participant
+
+    def toString(self):
+        return f"QuizParticipant(quiz_id={self.quiz_id}, username={self.username}, score={self.score}, current_question={self.current_question}, answers={self.answers})"

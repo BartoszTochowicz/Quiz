@@ -112,8 +112,17 @@ class QuizMultiplayerController:
                 quiz_id = str(quiz_id),
                 username = host_username
             )
-            db.session.add(new_lobby,quiz_participant)
+
+            print("quiz particpant: ", quiz_participant.toString)
+
+            db.session.add(new_lobby)
             db.session.commit()
+
+            db.session.add(quiz_participant)
+            db.session.commit()
+
+            print(f"Lobby {lobby_id} created successfully")
+            print(f"Players: {new_lobby.players}")
             return {"message":"Lobby created successfully","data":{
                 "lobby_id": str(lobby_id),
                 "host_username": host_username,

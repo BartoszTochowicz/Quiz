@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { data, useNavigate } from "react-router-dom";
 import axios from "axios";
 import LobbyForm from "../components/LobbyForm";
 import socketService from "../utils/socketService";
+import AuthContext from "../utils/authProvider";
 
 function LobbyCreator() {
     const [lobbyData, setLobbyData] = useState(null);
+    const {isAuthenticated,authToken,triggerAuthCheck} = useContext(AuthContext)
     const navigation = useNavigate();
 
     useEffect(() => {
@@ -16,42 +18,28 @@ function LobbyCreator() {
         socketService.updateCallbacks({
             onLobbyCreated:(data) => {
                 console.log('Lobby created: ',data);
-                navigation(`/lobby/${data['lobby_id']}`)
+                // Backend: {message: ... , data:{lobby_id: ...}}
+                navigation(`/lobby/${data.data.lobby_id}`)
             }
         })
-    })
+    });
+    // useEffect(() => {
+    //     if(!socketService.getConnectionStatus()){
+    //         socketService.reconnect(authToken);
+    //     }
+    // }, [authToken]);
 
     const handleFormSubmit = async (params) =>{
-        // try{
-        //     axios.post("http://localhost:5000/api/v1/multiplayer/lobby/create",params,{
-        //         headers:{
-        //             "Content-Type": "application/json",
-        //             "Authorization" : `Bearer ${localStorage.getItem("access_token")}`  
-        //         }
-        //     }).then(res => {
-        //         setLobbyData(res.data.data);
-        //         socketService.emit('lobby_details',{lobby_id:lobbyData});
-        //         console.log("Lobby created successfully:");
-        //         console.log(res.data.data);
-        //         navigation(`/lobby/${res.data.data.lobby_id}`)
-        //     })
-        // }
-        // catch(error){
-        //     console.error("Error creating lobby:", error);
-        // }
         console.log(params);
         if (!socketService.getConnectionStatus()){
             console.error("Socket is not connected. Cannot create lobby.")
             return;
         }
-        socketService.emit('create_lobby',params,(response) => {
-            // console.log("Lobby created successfully:", response);
-            // setLobbyData(response);
-            // navigation(`/lobby/${response.lobby_id}`); // Navigate to the new lobby
-        }).catch((error) => {
-            console.error("Error createing lobby: ",error,". Please try again");
-            alert("Failed to create lobby. Please try again")
-        })
+        socketService.emit('create_lobby',params)
+            .catch((error) => {
+                console.error("Error createing lobby: ",error,". Please try again");
+                alert("Failed to create lobby. Please try again")
+            });
         // console.error("Error creating lobby:", error);
     }
     return(

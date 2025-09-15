@@ -40,29 +40,40 @@ function Lobbies() {
             onPlayerJoined: (data) => {
                 console.log("Joined lobby successfully:", data);
                 setIsJoining(true);
+                socketService.emit('list_lobbies');
                 navigation(`/lobby/${data.lobby_id}`);
+            },
+            onPlayerLeft: (data) => {
+                console.log("Player left");
+                socketService.emit('list_lobbies');
             },
             onLobbyDeleted: (data) => {
                 const deletedId = data.lobby_id;
                 setLobbies((prev) => prev.filter((lobby) => lobby.lobby_id !== deletedId));
                 console.log("Lobby deleted",data);
+            },
+            onLobbyCreated: (data)=> {
+                console.log('Lobby created, ',data.data);
+                setLobbies((prev) => [...prev,data.data]);
             }
         });
 
         // Connect to socket server
         socketService.connect(authToken);
 
-        return () => {
-            console.log("Cleaning up socket connection");
-            if (!isAuthenticated) {
-                socketService.disconnect();
-                socketInitialized.current = false;
-            }
-        };
+        // return () => {
+        //     console.log("Cleaning up socket connection");
+        //     // if (!isAuthenticated) {
+        //     //     socketService.disconnect();
+        //     //     socketInitialized.current = false;
+        //     // }
+        // };
     }, [isAuthenticated, authToken, triggerAuthCheck]);
 
     useEffect(() => {
-        socketService.reconnect(authToken);
+        if(!socketService.getConnectionStatus()){
+            socketService.reconnect(authToken);            
+        }
     }, [authToken]);
 
     useEffect(() => {

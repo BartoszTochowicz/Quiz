@@ -21,6 +21,36 @@ function Lobby() {
         }
 
         socketService.updateCallbacks({
+            onLobbyUpdated: (data) => {
+                console.log("update lobby")
+                setPlayers(data.users);
+                setCurrentPlayers(data.users.length)
+            },
+            onLobbyDeleted: () => {
+                setHostUsername("");
+                setPlayers([]);
+                setMaxPlayers(0);
+                setCurrentPlayers(0);
+                setLobbyName("");
+                alert("Lobby has been deleted");
+                navigator('/lobby');
+            },
+            onQuizStarted: () => {
+                alert("Quiz is starting!");
+                navigator(`/quiz/${lobbyId}`);
+            },
+            onPlayerLeft: (data) => {
+                // socketService.emit('get_lobby_details')
+                // const deletedUsername = data.username;
+                // setPlayers((prev) => prev.filter((player) => player !== deletedUsername));
+                // setCurrentPlayers((prev) => prev - 1);
+                console.log("Player left");
+                socketService.emit('get_lobby_details',{lobby_id:lobbyId});
+            },
+            onPlayerJoined: (data) => {
+                console.log("Player joined")
+                socketService.emit('get_lobby_details', {lobby_id:lobbyId});
+            },
             onLobbyDetails: (response) => {
                 setHostUsername(response.host_username);
                 setPlayers(response.players);
@@ -31,40 +61,25 @@ function Lobby() {
             }
         });
 
-        socketService.updateCallbacks({
-            onLobbyUpdated: (updatedPlayers) => {
-                setPlayers(updatedPlayers);
-                setCurrentPlayers(players.length)
-            },
-            onLobbyDeleted: () => {
-                setHostUsername(NaN);
-                setPlayers(NaN);
-                setMaxPlayers(NaN);
-                setCurrentPlayers(NaN);
-                setLobbyName(NaN);
-                alert("Lobby has been deleted");
-                navigator('/lobby');
-            },
-            onQuizStarted: () => {
-                alert("Quiz is starting!");
-                navigator(`/quiz/${lobbyId}`);
-            },
-            onPlayerLeft: (data) => {
-                const deletedUsername = data.username;
-                setPlayers((prev) => prev.filter((player) => player !== deletedUsername));
-                console.log("Lobby deleted",data);
-                navigator('/lobby');
-            }
-        });
-
         return () => {
-            socketService.emit('leave_lobby', { lobby_id: lobbyId });
+            // socketService.emit('leave_lobby', { lobby_id: lobbyId, username: username });
         };
     },[lobbyId]);
 
     useEffect(() => {
-        socketService.emit('get_lobby_details',{lobby_id: lobbyId});
-    },[])
+        if (socketService.getSocket() !== null){
+            socketService.emit('get_lobby_details',{lobby_id: lobbyId});
+        }
+    },[lobbyId]);
+
+    // useEffect(() => {
+    //     if(!socketService.getConnectionStatus()){
+    //         socketService.reconnect(authToken);
+    //         socketService.emit('get_lobby_details',{lobby_id: lobbyId});
+    //     }
+    //     // socketService.reconnect(authToken);
+    //     // socketService.emit('get_lobby_details',{lobby_id: lobbyId});
+    // }, [authToken]);
 
     const handleLeaveLobby = () => {
         socketService.emit('leave_lobby', { lobby_id: lobbyId, username: username });
@@ -90,15 +105,22 @@ function Lobby() {
                         </tr>
                     </thead>
                     <tbody>
-                        {players.map((p,index) => {
+                        {players.map((p,index) => (
                             <tr key={index}>
                                 <th scope="row">{index+1}</th>
                                 <th scope="row">{p}</th>
                             </tr>
                             
-                        })}
+                        ))}
                     </tbody>
                 </table>
+                <button onClick={handleLeaveLobby}>Leave Lobby</button>
+                {username===hostUsername && (
+                    <div>
+                        <button onClick={handleDeleteLobby}>Delete Lobby</button>
+                        <button onClick={handleStartQuiz}>Start Quiz</button>
+                    </div>
+                )}
             </div>
             {/* <ul>
                 <li>Host: <b>{hostUsername}</b> {hostUsername===username}</li>

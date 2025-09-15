@@ -13,6 +13,7 @@ sid_to_username = {}
 
 @socketio.on('connect')
 def test_connect(auth):
+    print('Connection attempt with auth:', auth)
     validation = get(request.url_root + 'api/v1/auth/login', headers={"Authorization" : f"Bearer {auth['token']}"})
     if validation.status_code == 200:
         print('Client connected:', validation.json())
@@ -24,9 +25,10 @@ def test_connect(auth):
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    # request.args may not contain username; depends on how client connected. log everything we have:
-    print('Client disconnected, request.args:', request.args, 'remote_addr:', request.remote_addr)
+
+    print('Disconnecting handler')
     username = sid_to_username.get(request.sid)
+    print("Disconnecting user:", username)
     if not username:
         print("Username not in the lobby")
         return
@@ -68,6 +70,8 @@ def handle_create_lobby(data):
     if status != 201:
         emit('error', {'message': result.get('error', 'Failed to create lobby')})
         return
+    user_id = request.sid
+    sid_to_username[user_id] = data.get("host_username")
     emit('lobby_created', result)
 
 @socketio.on('join_lobby')
@@ -153,9 +157,18 @@ def handle_leave_lobby(data):
         print("User not found in Lobby: ", lobby.players)
         emit('error', {'message': 'User not in lobby'})
         return
+    
+    quiz_participant = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id,username=username).first()
+    if not quiz_participant:
+        print("Participant record not found")
+        emit('error', {'message': 'Participant record not found'})
+        return
+    
     print("players before removal:", lobby.players)
     lobby.players.remove(username)
+    db.session.delete(quiz_participant)
     print("players after removal:", lobby.players)
+    
     try:
         db.session.commit()
     except Exception as e:
