@@ -22,9 +22,16 @@ function Lobby() {
 
         socketService.updateCallbacks({
             onLobbyUpdated: (data) => {
-                console.log("update lobby")
-                setPlayers(data.users);
-                setCurrentPlayers(data.users.length)
+                console.log("update lobby", data);
+                if (!data || !data.players) {
+                    console.warn("Invalid lobby update payload:", data);
+                    return;
+                }
+                setPlayers(data.players);
+                setCurrentPlayers(data.players.length);
+                setHostUsername(data.host_username || "");
+                setMaxPlayers(data.max_players || 0);
+                setLobbyName(data.lobby_name || "");
             },
             onLobbyDeleted: () => {
                 setHostUsername("");
@@ -45,19 +52,19 @@ function Lobby() {
                 // setPlayers((prev) => prev.filter((player) => player !== deletedUsername));
                 // setCurrentPlayers((prev) => prev - 1);
                 console.log("Player left");
-                socketService.emit('get_lobby_details',{lobby_id:lobbyId});
+                // socketService.emit('get_lobby_details',{lobby_id:lobbyId});
             },
             onPlayerJoined: (data) => {
                 console.log("Player joined")
-                socketService.emit('get_lobby_details', {lobby_id:lobbyId});
+                // socketService.emit('get_lobby_details', {lobby_id:lobbyId});
             },
-            onLobbyDetails: (response) => {
-                setHostUsername(response.host_username);
-                setPlayers(response.players);
-                setMaxPlayers(response.max_players);
-                setCurrentPlayers(response.current_players);
-                setLobbyName(response.lobby_name);
-                console.log("Lobby details updated:", response);
+            onLobbyDetails: (data) => {
+                setHostUsername(data.host_username);
+                setPlayers(data.players);
+                setMaxPlayers(data.max_players);
+                setCurrentPlayers(data.current_players);
+                setLobbyName(data.lobby_name);
+                console.log("Lobby details updated:", data);
             }
         });
 
@@ -67,21 +74,22 @@ function Lobby() {
     },[lobbyId]);
 
     useEffect(() => {
-        if (socketService.getSocket() !== null){
+        if (socketService.getSocket() !== null || (socketService.getConnectionStatus() && lobbyId)){
             socketService.emit('get_lobby_details',{lobby_id: lobbyId});
         }
     },[lobbyId]);
 
-    // useEffect(() => {
-    //     if(!socketService.getConnectionStatus()){
-    //         socketService.reconnect(authToken);
-    //         socketService.emit('get_lobby_details',{lobby_id: lobbyId});
-    //     }
-    //     // socketService.reconnect(authToken);
-    //     // socketService.emit('get_lobby_details',{lobby_id: lobbyId});
-    // }, [authToken]);
+    useEffect(() => {
+        if(!socketService.getConnectionStatus()){
+            socketService.reconnect(authToken);
+            socketService.emit('get_lobby_details',{lobby_id: lobbyId});
+        }
+        // socketService.reconnect(authToken);
+        // socketService.emit('get_lobby_details',{lobby_id: lobbyId});
+    }, [authToken]);
 
     const handleLeaveLobby = () => {
+        console.log(username,' is living lobby')
         socketService.emit('leave_lobby', { lobby_id: lobbyId, username: username });
     }
 

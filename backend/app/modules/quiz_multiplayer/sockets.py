@@ -1,15 +1,75 @@
+import time
+from datetime import datetime, timedelta
 from app.db.db import db
 from app.db.models import Lobby, Quiz, QuizParticipant
 from app.extensions import socketio
 from flask_socketio import emit,join_room,leave_room
-from flask import request
+from flask import current_app, request
 from requests import get
 from app.modules.quiz_multiplayer.controller import QuizMultiplayerController
 
 quizMultiplayerController = QuizMultiplayerController()
 
-# Mapping of socket IDs to usernames for tracking connected users
-sid_to_username = {}
+# maps
+sid_to_username = {} # sid -> username
+username_to_sids = {} # username -> [sid, sid, ...]
+
+# How long user can refresh/reconnect without being removed (seconds)
+GRACE_PERIOD_SECONDS = 30
+
+def schedule_remove_if_offline(username):
+    app = current_app._get_current_object()
+    socketio.start_background_task(_remove_if_offline,username,app)
+
+def _remove_if_offline(username,app):
+    """
+    Wait GRACE_PERIOD_SECONDS, check if user is still offline
+    If yes -> delete him from lobby and delete QuizParticipant record
+    """
+    
+    time.sleep(GRACE_PERIOD_SECONDS)
+    with app.app_context():
+        quiz_participant = QuizParticipant.query.filter_by(username=username).first()
+        if not quiz_participant:
+            return # Already deleted or never existed
+        
+        if quiz_participant.status == "online":
+            return
+        timestamp_of_disconnect = quiz_participant.timestamp_of_disconnect
+        if not timestamp_of_disconnect :
+            return
+        
+        # delta = datetime.utcnow() - quiz_participant.time_of_disconnect
+
+        if not quiz_participant.checkTimeStamp(timestamp_of_disconnect,GRACE_PERIOD_SECONDS):
+            return
+        
+        lobby = Lobby.query.filter_by(quiz_id=quiz_participant.quiz_id).first()
+
+        try:
+            if lobby and quiz_participant.username in lobby.players:
+                lobby.players.remove(quiz_participant.username)
+
+            db.session.delete(quiz_participant)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print("Error cleaning up offline participant: ",e)
+            return
+        
+        if lobby:
+            emit_lobby_updated(lobby)
+            socketio.emit('player_left', {'username': username, 'player_left': len(lobby.players)},room=lobby.lobby_id)
+            participant = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).first()
+            if not participant:
+                try:
+                    db.session.delete(lobby)
+                    db.session.commit()
+                    socketio.emit('lobby_deleted', {'lobby_id':lobby.lobby_id}, broadcast = True)
+                except Exception as e:
+                    db.session.rollback()
+                    print("DB error deleting empty lobby after offline cleanup:", e)
+
 
 @socketio.on('connect')
 def test_connect(auth):
@@ -21,47 +81,76 @@ def test_connect(auth):
     else:
         print('Connection failed:', validation.json())
         raise ConnectionRefusedError('auth_fail')
+    
+    user_info = validation.json()
+    username = user_info.get('username')
+    user_sid = request.sid
 
+    sid_to_username[user_sid] = username
+    username_to_sids.setdefault(username, []).append(user_sid)
+
+    print('Client connected: ',user_info)
+
+    quiz_participant = QuizParticipant.query.filter_by(username=username).first()
+    if not quiz_participant:
+        return
+    try:
+        now = datetime.utcnow()
+        if quiz_participant.status == "offline" and not quiz_participant.checkTimeStamp(now):
+            quiz_participant.mark_reconnected()
+            db.session.commit()
+
+            lobby = Lobby.query.filter_by(quiz_id=quiz_participant.quiz_id).first()
+            if lobby:
+                join_room(lobby.lobby_id)
+                emit_lobby_updated(lobby)
+                socketio.emit('player_reconnected', {'username':username}, room=lobby.lobby_id)
+    except Exception as e:
+        db.session.rollback()
+        print("Error handling reconnection:", e)
+    emit('auth_success', {'data':'Connected successfully!'})
 
 @socketio.on('disconnect')
 def handle_disconnect():
+    user_sid = request.sid
+    username = sid_to_username.pop(user_sid, None)
 
-    print('Disconnecting handler')
-    username = sid_to_username.get(request.sid)
     print("Disconnecting user:", username)
+
     if not username:
         print("Username not in the lobby")
         return
-
-    quizParticipant = QuizParticipant.query.filter_by(username=username).first()
-    if quizParticipant:
-        lobby = Lobby.query.filter_by(quiz_id=quizParticipant.quiz_id).first()
-        if lobby and username in lobby.players:
-            lobby.players.remove(username)
-            try:
-                db.session.commit()
-            except Exception as e:
-                db.session.rollback()
-                print("DB commit error when removing player on disconnect:", e)
-                return
-
-            emit('player_left', {'username': username, 'players_left': len(lobby.players)}, room=lobby.lobby_id)
-            if len(lobby.players) == 0:
-                try:
-                    db.session.delete(lobby)
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    print("DB error deleting empty lobby:", e)
-                    return
-                emit('lobby_deleted', {'lobby_id': lobby.lobby_id}, broadcast=True)
-
-        try:
-            db.session.delete(quizParticipant)
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            print('Error removing participant on disconnect:', e)
+    
+    user_sids = username_to_sids.get(username, [])
+    if user_sid in user_sids:
+        user_sids.remove(user_sid)
+    if user_sids:
+        username_to_sids[username] = user_sids
+        print('User still has active SIDs, not marking offline:', username, username_to_sids[username])
+        return
+    else:
+        username_to_sids.pop(username,None)
+    
+    quiz_participant = QuizParticipant.query.filter_by(username=username).first()
+    if not quiz_participant:
+        print("No QuizParticipant record for",username)
+        return
+    
+    lobby = Lobby.query.filter_by(quiz_id=quiz_participant.quiz_id).first()
+    
+    try:
+        quiz_participant.mark_disconnected()
+        db.session.commit()
+        print(f"Marked participant offline: {username} at {quiz_participant.timestamp_of_disconnection}")
+    except Exception as e:
+        db.session.rollback()
+        print("DB error marking participant offline:", e)
+        return
+    
+    # Dont delete user from lobby at once
+    # Start task in background which will delete user after GRACE_PERIOD_SECONDS 
+    # socketio.start_background_task(schedule_remove_if_offline,sid_to_username)
+    schedule_remove_if_offline(username=username)
 
 @socketio.on('create_lobby')
 def handle_create_lobby(data):
@@ -70,8 +159,15 @@ def handle_create_lobby(data):
     if status != 201:
         emit('error', {'message': result.get('error', 'Failed to create lobby')})
         return
-    user_id = request.sid
-    sid_to_username[user_id] = data.get("host_username")
+    
+    user_sid = request.sid
+    host_username = data.get("host_username")
+    sid_to_username[user_sid] = host_username
+    username_to_sids.setdefault(host_username,[]).append(user_sid)
+
+    lobby_id = result['data']['lobby_id']
+    join_room(lobby_id)
+
     emit('lobby_created', result)
 
 @socketio.on('join_lobby')
@@ -90,13 +186,15 @@ def handle_join_lobby(data):
         print("Cannot join, game already started")
         emit('error', {'message': 'Cannot join, game already started'})
         return
-
-    if username in lobby.players:
+    participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
+    print('participants: ', [p.username for p in participants])
+    print('lobby players: ', lobby.players)
+    if any(p.username == username for p in participants):
         print("User already in lobby")
         emit('error', {'message': 'User already in lobby'})
         return
 
-    if len(lobby.players) >= lobby.max_players:
+    if len(participants) >= lobby.max_players:
         print("Lobby is full")
         emit('error', {'message': 'Lobby is full'})
         return
@@ -132,16 +230,14 @@ def handle_join_lobby(data):
 
     join_room(lobby_id)
 
-    user_id = request.sid
-    if not sid_to_username.get(user_id):
-        sid_to_username[user_id] = username
+    user_sid = request.sid
+    if not sid_to_username.get(user_sid):
+        sid_to_username[user_sid] = username
+    username_to_sids.setdefault(username,[]).append(user_sid)
     
-    participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
-    usernames = [p.username for p in participants]
     emit('player_joined', {'username': username,'lobby_id':lobby_id}, room=lobby_id)
-    emit('lobby_updated', {'users': usernames}, room=lobby_id)
+    emit_lobby_updated(lobby)
     print(f"User {username} joined lobby {lobby.lobby_name}")
-    print("Players in lobby:", usernames)
 
 @socketio.on('leave_lobby')
 def handle_leave_lobby(data):
@@ -149,23 +245,20 @@ def handle_leave_lobby(data):
     lobby_id = data.get("lobby_id")
     username = data.get("username")
     lobby = Lobby.query.filter_by(lobby_id=lobby_id).first()
+
     if not lobby:
         print("Lobby not found")
         emit('error', {'message': 'Lobby not found'})
         return
-    if username not in lobby.players:
+    
+    quiz_participant = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id,username=username).first()
+    if not quiz_participant:
         print("User not found in Lobby: ", lobby.players)
         emit('error', {'message': 'User not in lobby'})
         return
     
-    quiz_participant = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id,username=username).first()
-    if not quiz_participant:
-        print("Participant record not found")
-        emit('error', {'message': 'Participant record not found'})
-        return
-    
     print("players before removal:", lobby.players)
-    lobby.players.remove(username)
+    # lobby.players.remove(username)
     db.session.delete(quiz_participant)
     print("players after removal:", lobby.players)
     
@@ -179,17 +272,24 @@ def handle_leave_lobby(data):
 
     leave_room(lobby_id)
 
-    user_id = request.sid
-    if sid_to_username.get(user_id):
-        sid_to_username.pop(user_id)
+    user_sid = request.sid
+    if sid_to_username.get(user_sid):
+        sid_to_username.pop(user_sid)
+    user_sids = username_to_sids.get(username,[])
+    if user_sid in user_sids:
+        user_sids.remove(user_sid)
+        if user_sids:
+            username_to_sids[username]=user_sids
+        else:
+            username_to_sids.pop(username,None)
 
-    participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
-    usernames = [p.username for p in participants]
-    emit('lobby_updated', {'users': usernames}, room=lobby_id)
+
+    emit_lobby_updated(lobby)
     emit('player_left', {'username': username}, room=lobby_id)
     print(f"User {username} left lobby {lobby.lobby_name}")
-    print("Players left in lobby:", usernames)
-    if len(lobby.players) == 0:
+    
+    participant = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).first()
+    if not participant:
         try:
             db.session.delete(lobby)
             db.session.commit()
@@ -240,7 +340,7 @@ def handle_get_lobby_details(data):
         'lobby_name': lobby.lobby_name,
         'host_username': lobby.host_username,
         'max_players': lobby.max_players,
-        'current_players': len(lobby.players),
+        'current_players': len(usernames),
         'players': usernames
     }
     print("lobby details:", lobby_data)
@@ -288,9 +388,9 @@ def handle_submit_answer(data):
         emit('error', {'message': 'Lobby not found'})
         return
     
-    if username not in lobby.players:
-        emit('error', {'message': 'User not in lobby'})
-        return
+    # if username not in lobby.players:
+    #     emit('error', {'message': 'User not in lobby'})
+    #     return
     
     if lobby.status != "in_game":
         emit('error', {'message': 'Quiz not in progress'})
@@ -382,3 +482,18 @@ def handle_end_quiz(data):
 def generate_lobby_id():
     import uuid
     return str(uuid.uuid4())
+
+def emit_lobby_updated(lobby):
+    participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
+    usernames = [p.username for p in participants]
+    lobby_data = {
+        'lobby_id': lobby.lobby_id,
+        'lobby_name': lobby.lobby_name,
+        'host_username': lobby.host_username,
+        'max_players': lobby.max_players,
+        'current_players': len(usernames),
+        'players': usernames,
+        'status': lobby.status
+    }
+    print("Players in lobby:", usernames)
+    socketio.emit('lobby_updated', lobby_data, room=lobby.lobby_id)

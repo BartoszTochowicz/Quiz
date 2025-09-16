@@ -1,3 +1,4 @@
+from datetime import timedelta,datetime
 from uuid import uuid4
 from app.extensions import jwt
 from app.db.db import db
@@ -65,7 +66,29 @@ class QuizParticipant(db.Model):
     username = db.Column(db.String(255),nullable=False)
     score = db.Column(db.Integer,nullable=False, default=0)
     current_question = db.Column(db.Integer,nullable=False, default=0)
-    answers = db.Column(db.PickleType, nullable=False, default=[])  # List of answers given by the participant
+    answers = db.Column(db.PickleType, nullable=False, default=list)  # List of answers given by the participant
+    status = db.Column(db.String(255),nullable=False, default="online") # Thoose two parameters are used to prevent  
+    timestamp_of_disconnection = db.Column(db.DateTime,nullable=True) # from kicking participant from Lobby
 
     def toString(self):
         return f"QuizParticipant(quiz_id={self.quiz_id}, username={self.username}, score={self.score}, current_question={self.current_question}, answers={self.answers})"
+    
+    def mark_disconnected(self):
+        # Sets status to offline and saves timestamp of disconnection
+        self.status = "offline"
+        self.timestamp_of_disconnection = datetime.utcnow()
+    
+    def mark_reconnected(self):
+        """ Sets status to online """
+        self.status = "online"
+        self.timestamp_of_disconnection = None
+    def checkTimeStamp(self, timestamp_of_reconnection, grace_period_seconds = 30):
+        """
+        Checks, if player reconnected in time.
+        Returns True if player exceeded time limit and player can be removed
+        """
+        if not self.timestamp_of_disconnection:
+            return False
+        delta = timestamp_of_reconnection - self.timestamp_of_disconnection
+        
+        return delta > timedelta(seconds=grace_period_seconds)
