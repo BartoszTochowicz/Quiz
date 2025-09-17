@@ -170,10 +170,10 @@ class SocketService {
         })
 
         this.socket.on('lobby_updated', (data) =>{
-            console.log("Updated lobby users: ",data.users)
+            console.log("Updated lobby users: ",data)
 
             if(this.callbacks.onLobbyUpdated){
-                this.callbacks.onLobbyUpdated(data.users);
+                this.callbacks.onLobbyUpdated(data);
             }
         })
 
@@ -208,6 +208,14 @@ class SocketService {
                 this.callbacks.onQuizEnded(data);
             }
         });
+        
+        this.socket.on("error",(data) => {
+            console.log('Error occurred', data);
+
+            if(this.callbacks.onError){
+                this.callbacks.onError(data);
+            }
+        })
     }
     // Process queued messages when connection is established
     processMessageQueue() {

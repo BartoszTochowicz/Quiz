@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import socketService from "../utils/socketService";
 import AuthContext from "../utils/authProvider";
+import {toast} from 'react-toastify';
 
 function Lobbies() {
     const { isAuthenticated, authToken, triggerAuthCheck, username } = useContext(AuthContext);
@@ -55,6 +56,11 @@ function Lobbies() {
             onLobbyCreated: (data)=> {
                 console.log('Lobby created, ',data.data);
                 setLobbies((prev) => [...prev,data.data]);
+            },
+            onError: (data) => {
+                console.log(`Error occuerrd: ${data.message}`);
+                toast.error(`❌ ${data.message}`);
+                // alert(`❌ ${data.message}`);
             }
         });
 

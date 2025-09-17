@@ -10,7 +10,8 @@ import Account from "./pages/Account";
 import Lobbies from "./pages/Lobbies";
 import LobbyCreator from "./pages/LobbyCreator";
 import Lobby from "./pages/Lobby";
-
+import { ToastContainer } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="/lobby/create" element={<LobbyCreator/>}/>
         <Route path="/lobby/:lobbyId" element={<Lobby/>}/>
       </Routes>
+      <ToastContainer position="top-right" autoClose={3000} />
     </Router>
     </AuthProvider>
   );

@@ -3,6 +3,8 @@ import { useState, useEffect, useContext} from "react";
 import socketService from "../utils/socketService";
 import { useNavigate, useParams } from "react-router-dom";
 import AuthContext from "../utils/authProvider";
+import {toast} from 'react-toastify';
+
 
 function Lobby() {
     const [players, setPlayers] = useState([]);
@@ -22,7 +24,7 @@ function Lobby() {
 
         socketService.updateCallbacks({
             onLobbyUpdated: (data) => {
-                console.log("update lobby", data);
+                console.log(`update lobby ${data}`);
                 if (!data || !data.players) {
                     console.warn("Invalid lobby update payload:", data);
                     return;
@@ -39,7 +41,7 @@ function Lobby() {
                 setMaxPlayers(0);
                 setCurrentPlayers(0);
                 setLobbyName("");
-                alert("Lobby has been deleted");
+                toast.info("Lobby has been deleted");
                 navigator('/lobby');
             },
             onQuizStarted: () => {
@@ -64,7 +66,11 @@ function Lobby() {
                 setMaxPlayers(data.max_players);
                 setCurrentPlayers(data.current_players);
                 setLobbyName(data.lobby_name);
-                console.log("Lobby details updated:", data);
+                console.log(`Lobby details updated: ${data}`);
+            },
+            onError: (data) => {
+                console.log(`Error occuerrd: ${data.message}`);
+                toast.error(`❌ ${data.message}`);
             }
         });
 
