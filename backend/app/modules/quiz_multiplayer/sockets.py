@@ -35,20 +35,20 @@ def _remove_if_offline(username,app):
         
         if quiz_participant.status == "online":
             return
-        timestamp_of_disconnect = quiz_participant.timestamp_of_disconnect
-        if not timestamp_of_disconnect :
+        timestamp_of_disconnection = quiz_participant.timestamp_of_disconnection
+        if not timestamp_of_disconnection :
             return
         
         # delta = datetime.utcnow() - quiz_participant.time_of_disconnect
 
-        if not quiz_participant.checkTimeStamp(timestamp_of_disconnect,GRACE_PERIOD_SECONDS):
+        if not quiz_participant.checkTimeStamp(timestamp_of_disconnection,GRACE_PERIOD_SECONDS):
             return
         
         lobby = Lobby.query.filter_by(quiz_id=quiz_participant.quiz_id).first()
 
         try:
-            if lobby and quiz_participant.username in lobby.players:
-                lobby.players.remove(quiz_participant.username)
+            if lobby and quiz_participant.username:
+                lobby.current_players = max(lobby.current_players-1,0)
 
             db.session.delete(quiz_participant)
             db.session.commit()
@@ -59,13 +59,13 @@ def _remove_if_offline(username,app):
         
         if lobby:
             emit_lobby_updated(lobby)
-            socketio.emit('player_left', {'username': username, 'player_left': len(lobby.players)},room=lobby.lobby_id)
+            socketio.emit('player_left', {'username': username, 'player_left': lobby.current_players},room=lobby.lobby_id)
             participant = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).first()
             if not participant:
                 try:
                     db.session.delete(lobby)
                     db.session.commit()
-                    socketio.emit('lobby_deleted', {'lobby_id':lobby.lobby_id}, broadcast = True)
+                    socketio.emit('lobby_deleted', {'lobby_id':lobby.lobby_id}, room=lobby.lobby_id)
                 except Exception as e:
                     db.session.rollback()
                     print("DB error deleting empty lobby after offline cleanup:", e)
@@ -157,7 +157,7 @@ def handle_create_lobby(data):
     print("create_lobby data:", data)
     result, status = quizMultiplayerController.create_lobby(data)
     if status != 201:
-        emit('error', {'message': result.get('error', 'Failed to create lobby')})
+        emit('error', {'message': result.get('error', 'Failed to create lobby')}, room=request.sid)
         return
     
     user_sid = request.sid
@@ -167,6 +167,7 @@ def handle_create_lobby(data):
 
     lobby_id = result['data']['lobby_id']
     join_room(lobby_id)
+
 
     emit('lobby_created', result)
 
@@ -179,40 +180,40 @@ def handle_join_lobby(data):
 
     if not lobby or not username:
         print("Lobby not found or username missing")
-        emit('error', {'message': 'Invalid data'})
+        emit('error', {'message': 'Invalid data'},room=request.sid)
         return
 
     if lobby.status != "waiting":
         print("Cannot join, game already started")
-        emit('error', {'message': 'Cannot join, game already started'})
+        emit('error', {'message': 'Cannot join, game already started'},room=request.sid)
         return
     participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
     print('participants: ', [p.username for p in participants])
-    print('lobby players: ', lobby.players)
+
     if any(p.username == username for p in participants):
         print("User already in lobby")
-        emit('error', {'message': 'User already in lobby'})
+        emit('error', {'message': 'User already in lobby'},room=request.sid)
         return
 
-    if len(participants) >= lobby.max_players:
+    if lobby.current_players >= lobby.max_players:
         print("Lobby is full")
-        emit('error', {'message': 'Lobby is full'})
+        emit('error', {'message': 'Lobby is full'},room=request.sid)
         return
 
     password = data.get("password", None)
     if (not lobby.isOpen) and (lobby.check_password(password) is False):
         print("Incorrect password for private lobby")
-        emit('error', {'message': 'Incorrect password'})
+        emit('error', {'message': 'Incorrect password'},room=request.sid)
         return
 
     # Add player, commit first (so DB is consistent)
-    lobby.players.append(username)
+    
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         print("DB commit error when adding player:", e)
-        emit('error', {'message': 'Internal server error'})
+        emit('error', {'message': 'Internal server error'},room=request.sid)
         return
 
     quiz_participant = QuizParticipant(
@@ -220,12 +221,13 @@ def handle_join_lobby(data):
         username=username
     )
     db.session.add(quiz_participant)
+    lobby.current_players += 1
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         print("DB commit error when creating participant:", e)
-        emit('error', {'message': 'Internal server error'})
+        emit('error', {'message': 'Internal server error'},room=request.sid)
         return
 
     join_room(lobby_id)
@@ -248,29 +250,27 @@ def handle_leave_lobby(data):
 
     if not lobby:
         print("Lobby not found")
-        emit('error', {'message': 'Lobby not found'})
+        emit('error', {'message': 'Lobby not found'},room=request.sid)
         return
     
     quiz_participant = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id,username=username).first()
     if not quiz_participant:
-        print("User not found in Lobby: ", lobby.players)
-        emit('error', {'message': 'User not in lobby'})
+        print("User not found in Lobby")
+        emit('error', {'message': 'User not in lobby'},room=request.sid)
         return
     
-    print("players before removal:", lobby.players)
-    # lobby.players.remove(username)
     db.session.delete(quiz_participant)
-    print("players after removal:", lobby.players)
+    lobby.current_players = max(0, lobby.current_players - 1)
     
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         print("DB commit error when removing player:", e)
-        emit('error', {'message': 'Internal server error'})
+        emit('error', {'message': 'Internal server error'},room=request.sid)
         return
 
-    leave_room(lobby_id)
+    # leave_room(lobby_id)
 
     user_sid = request.sid
     if sid_to_username.get(user_sid):
@@ -285,6 +285,7 @@ def handle_leave_lobby(data):
 
 
     emit_lobby_updated(lobby)
+    # leave_room(lobby_id)
     emit('player_left', {'username': username}, room=lobby_id)
     print(f"User {username} left lobby {lobby.lobby_name}")
     
@@ -293,12 +294,13 @@ def handle_leave_lobby(data):
         try:
             db.session.delete(lobby)
             db.session.commit()
-            emit('lobby_deleted', {'lobby_id': lobby.lobby_id}, broadcast=True)
+            emit('lobby_deleted', {'lobby_id': lobby.lobby_id}, room=lobby.lobby_id)
         except Exception as e:
             db.session.rollback()
             print("DB error deleting lobby after last left:", e)
-            emit('error', {'message': 'Internal server error'})
+            emit('error', {'message': 'Internal server error'},room=request.sid)
             return
+    leave_room(lobby_id)
 
 @socketio.on('delete_lobby')
 def handle_delete_lobby(data):
@@ -306,22 +308,22 @@ def handle_delete_lobby(data):
     lobby_id = data.get("lobby_id")
     lobby = Lobby.query.filter_by(lobby_id=lobby_id).first()
     if not lobby:
-        emit('error', {'message': 'Lobby not found'})
+        emit('error', {'message': 'Lobby not found'},room=request.sid)
         return
     username = data.get("username")
     if lobby.host_username != username:
-        emit('error', {'message': 'Only host can delete the lobby'})
+        emit('error', {'message': 'Only host can delete the lobby'},room=request.sid)
         return
 
     emit('lobby_deleted', {'lobby_id': lobby_id}, room=lobby_id)
-    emit('lobby_deleted', {'lobby_id': lobby_id}, broadcast=True)
+    # emit('lobby_deleted', {'lobby_id': lobby_id}, broadcast=True)
     try:
         db.session.delete(lobby)
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         print("DB error deleting lobby:", e)
-        emit('error', {'message': 'Internal server error'})
+        emit('error', {'message': 'Internal server error'},room=request.sid)
         return
 
 @socketio.on('get_lobby_details')
@@ -330,7 +332,7 @@ def handle_get_lobby_details(data):
     lobby_id = data.get('lobby_id')
     lobby = Lobby.query.filter_by(lobby_id=lobby_id).first()
     if not lobby:
-        emit('error', {'message': 'Lobby not found'})
+        emit('error', {'message': 'Lobby not found'},room=request.sid)
         return
     participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
     usernames = [p.username for p in participants]
@@ -357,7 +359,7 @@ def handle_list_lobbies(data=None):
             'lobby_name': lobby.lobby_name,
             'host_username': lobby.host_username,
             'max_players': lobby.max_players,
-            'current_players': len(lobby.players),
+            'current_players': lobby.current_players,
             'isOpen': lobby.isOpen,
             'status': lobby.status
         })
@@ -368,11 +370,11 @@ def handle_start_quiz(data):
     lobby_id = data.get("lobby_id")
     lobby = Lobby.query.filter_by(lobby_id=lobby_id).first()
     if not lobby:
-        emit('error', {'message': 'Lobby not found'})
+        emit('error', {'message': 'Lobby not found'},room=request.sid)
         return
     username = data.get("username")
     if lobby.host_username != username:
-        emit('error', {'message': 'Only host can start the quiz'})
+        emit('error', {'message': 'Only host can start the quiz'},room=request.sid)
         return
     lobby.status = "in_game"
 
@@ -385,20 +387,16 @@ def handle_submit_answer(data):
     lobby = Lobby.query.filter_by(lobby_id=lobby_id).first()
 
     if not lobby:
-        emit('error', {'message': 'Lobby not found'})
+        emit('error', {'message': 'Lobby not found'},room=request.sid)
         return
     
-    # if username not in lobby.players:
-    #     emit('error', {'message': 'User not in lobby'})
-    #     return
-    
     if lobby.status != "in_game":
-        emit('error', {'message': 'Quiz not in progress'})
+        emit('error', {'message': 'Quiz not in progress'},room=request.sid)
         return
     
     quiz_participant = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id,username=username).first()
     if not quiz_participant:
-        emit('error', {'message': 'Participant record not found'})
+        emit('error', {'message': 'Participant record not found'},room=request.sid)
         return
     
     answer = data.get("answer")
@@ -421,7 +419,7 @@ def handle_submit_answer(data):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        emit('error', {'message': 'Internal server error'})
+        emit('error', {'message': 'Internal server error'},room=request.sid)
         return
 
     emit('answer_submited', {
@@ -436,17 +434,17 @@ def handle_next_question(data):
     lobby_id = data.get("lobby_id")
     lobby = Lobby.query.filter_by(lobby_id=lobby_id).first()
     if not lobby:
-        emit('error', {'message': 'Lobby not found'})
+        emit('error', {'message': 'Lobby not found'},room=request.sid)
         return
     
     quiz = Quiz.query.filter_by(quiz_id=lobby.quiz_id).first()
     if not quiz:
-        emit('error', {'message': 'Quiz not found'})
+        emit('error', {'message': 'Quiz not found'},room=request.sid)
         return
     
     current_question_index = data.get('current_question_index')
     if current_question_index is None or current_question_index < 0 or current_question_index >= len(quiz.questions):
-        emit('error', {'message': 'Invalid question index'})
+        emit('error', {'message': 'Invalid question index'},room=request.sid)
         return
     
     question = quiz.questions[current_question_index]
@@ -462,10 +460,10 @@ def handle_end_quiz(data):
     lobby_id = data.get('lobby_id')
     lobby = Lobby.query.filter_by(lobby_id=lobby_id).first()
     if not lobby:
-        emit('error', {'message': 'Lobby not found'})
+        emit('error', {'message': 'Lobby not found'},room=request.sid)
         return
     if lobby.status != "in_game":
-        emit('error', {'message': 'Quiz not in progress'})
+        emit('error', {'message': 'Quiz not in progress'},room=request.sid)
         return
 
     participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
@@ -477,7 +475,7 @@ def handle_end_quiz(data):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        emit('error', {'message': 'Internal server error'})
+        emit('error', {'message': 'Internal server error'},room=request.sid)
         return
 def generate_lobby_id():
     import uuid
@@ -491,7 +489,7 @@ def emit_lobby_updated(lobby):
         'lobby_name': lobby.lobby_name,
         'host_username': lobby.host_username,
         'max_players': lobby.max_players,
-        'current_players': len(usernames),
+        'current_players': lobby.current_players,
         'players': usernames,
         'status': lobby.status
     }

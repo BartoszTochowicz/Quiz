@@ -46,7 +46,7 @@ class Lobby(db.Model):
     lobby_name = db.Column(db.String(255),nullable = False)
     host_username = db.Column(db.String(255), nullable=False)
     max_players = db.Column(db.Integer, nullable=False)
-    players = db.Column(db.PickleType, nullable=False, default=[])  # List of usernames
+    current_players = db.Column(db.Integer, nullable=False, default=0) # Current players in lobby
     category = db.Column(db.String(255), nullable=False)
     isOpen = db.Column(db.Boolean, nullable=False, default=True)
     status = db.Column(db.String(50), nullable=False)  # waiting, in_game, finished

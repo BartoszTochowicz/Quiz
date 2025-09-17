@@ -100,7 +100,7 @@ class QuizMultiplayerController:
                 host_username=host_username,
                 lobby_name = lobby_name,
                 max_players=max_players,
-                players=[host_username],
+                current_players=1,
                 category=category_name,
                 isOpen=isOpen,
                 status="waiting",
@@ -122,13 +122,13 @@ class QuizMultiplayerController:
             db.session.commit()
 
             print(f"Lobby {lobby_id} created successfully")
-            print(f"Players: {new_lobby.players}")
+            print(f"Players: {host_username}")
             return {"message":"Lobby created successfully","data":{
                 "lobby_id": str(lobby_id),
                 "host_username": host_username,
                 "lobby_name": lobby_name,
                 "max_players": max_players,
-                "players": [host_username],
+                "players": 1,
                 "category": category_name,
                 "isOpen": isOpen,
                 "status": "waiting",
