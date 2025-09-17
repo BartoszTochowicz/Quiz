@@ -188,8 +188,8 @@ class SocketService {
         this.socket.on('answer_submited', (data) => {
             console.log('Answer submited:',data);
 
-            if(this.callbacks.onSubmitAnswer){
-                this.callbacks.onSubmitAnswer(data);
+            if(this.callbacks.onAnswerSubmited){
+                this.callbacks.onAnswerSubmited(data);
             }
         });
 
@@ -201,7 +201,7 @@ class SocketService {
             }
         });
 
-        this.socket.on("end_quiz", (data) => {
+        this.socket.on("quiz_ended", (data) => {
             console.log('Quiz ended:',data);
 
             if(this.callbacks.onQuizEnded){

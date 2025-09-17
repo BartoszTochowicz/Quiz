@@ -12,6 +12,7 @@ import LobbyCreator from "./pages/LobbyCreator";
 import Lobby from "./pages/Lobby";
 import { ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import QuizMultiplayer from "./pages/QuizMultiplayer";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="/account" element={<Account/>}/>
         <Route path="/lobby/create" element={<LobbyCreator/>}/>
         <Route path="/lobby/:lobbyId" element={<Lobby/>}/>
+        <Route path="/quiz/:lobbyId" element={<QuizMultiplayer/>}/>
       </Routes>
       <ToastContainer position="top-right" autoClose={3000} />
     </Router>

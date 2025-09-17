@@ -44,8 +44,10 @@ function Lobby() {
                 toast.info("Lobby has been deleted");
                 navigator('/lobby');
             },
-            onQuizStarted: () => {
-                alert("Quiz is starting!");
+            onQuizStarted: (data) => {
+                toast.dark("Quiz is starting!");
+                localStorage.setItem("categry",data.category);
+                // localStorage.setItem("lobby_id",lobbyId);
                 navigator(`/quiz/${lobbyId}`);
             },
             onPlayerLeft: (data) => {

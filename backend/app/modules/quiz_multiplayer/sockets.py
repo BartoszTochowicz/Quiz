@@ -376,9 +376,31 @@ def handle_start_quiz(data):
     if lobby.host_username != username:
         emit('error', {'message': 'Only host can start the quiz'},room=request.sid)
         return
+    
     lobby.status = "in_game"
+    quiz = Quiz.query.filter_by(quiz_id=lobby.quiz_id).first()
 
-    emit('quiz_started', {'lobby_id': lobby_id}, room=lobby_id)
+    print(quiz.questions)
+
+    questions = [
+        {k: v for k,v in question.items() if k != 'correct_answer'}
+        for question in quiz.questions
+    ]
+
+    quiz_data = {
+        "quiz_id": quiz.quiz_id,
+        "category": quiz.category,
+        "questions": questions,
+        "total_questions": quiz.total_questions,
+    }
+    emit('quiz_started', {'lobby_id': lobby_id, 'quiz_data':quiz_data,'category':lobby.category}, room=lobby_id)
+
+    try: 
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        emit('error', {'message': 'Internal server error'},room=request.sid)
+        return
 
 @socketio.on('submit_answer')
 def handle_submit_answer(data):
@@ -415,12 +437,13 @@ def handle_submit_answer(data):
 
     quiz_participant.answers.append(answer)
     quiz_participant.current_question += 1
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        emit('error', {'message': 'Internal server error'},room=request.sid)
-        return
+    db.session.commit()
+    # try:
+    #     db.session.commit()
+    # except Exception as e:
+    #     db.session.rollback()
+    #     emit('error', {'message': 'Internal server error'},room=request.sid)
+    #     return
 
     emit('answer_submited', {
         'username': username,
@@ -428,6 +451,26 @@ def handle_submit_answer(data):
         'current_question': quiz_participant.current_question - 1,
         'score': quiz_participant.score
     }, room=lobby_id)
+
+    participants = QuizParticipant.query.filter_by(quiz_id=lobby.quiz_id).all()
+    all_answered = all(p.current_question > current_question_index for p in participants)
+
+    if all_answered:
+        scores = [{"username": p.username, "score":p.score }for p in participants]
+        socketio.emit("show_scores",{"scores": scores}, room=lobby_id)
+
+        def send_next():
+            next_index = current_question_index+1
+            if next_index < len(quiz.questions):
+                q = quiz.questions[next_index]
+                socketio.emit('next_question',{
+                    "question_index": next_index,
+                    "question": q['question'],
+                    "choices": q['choices']
+                }, room=lobby_id)
+            else:
+                socketio.emit('quiz_ended',{'scores':scores},room=lobby_id)
+        socketio.start_background_task(lambda: (time.sleep(5), send_next()))
 
 @socketio.on('next_question')
 def handle_next_question(data):
@@ -471,7 +514,7 @@ def handle_end_quiz(data):
 
     emit('quiz_ended', {'scores': scores}, room=lobby_id)
     try:
-        db.session.delete(lobby)
+        # db.session.delete(lobby)
         db.session.commit()
     except Exception as e:
         db.session.rollback()
